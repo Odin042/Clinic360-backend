@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcryptjs from 'bcryptjs';
 import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { createUser, findUserByEmail } from '../models/user';
@@ -25,7 +25,7 @@ export const register = async (
       return;
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcryptjs.hash(password, 10);
     const user = await createUser(username, email, passwordHash, profession);
 
     res.status(201).json({ message: 'Usuário registrado com sucesso!', user });
@@ -54,7 +54,7 @@ export const login = async (
       return;
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcryptjs.compare(password, user.password);
     if (!isPasswordValid) {
       res.status(400).json({ message: 'Credenciais inválidas.' });
       return;
