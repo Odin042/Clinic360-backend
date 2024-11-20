@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "bun run src/index.ts",
-    "dev": "bun run src/index.ts --watch"
+    "dev": "bun run src/index.ts --watch",
+    "test-db": "bun run src/config/db.ts"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
@@ -18,12 +19,15 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@google-cloud/cloud-sql-connector": "^1.4.0",
+    "@types/bcryptjs": "^2.4.6",
     "@types/pg": "^8.11.10",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "firebase": "^11.0.2",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.13.0"
+    "pg": "^8.13.1"
   }
 }
