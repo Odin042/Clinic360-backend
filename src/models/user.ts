@@ -4,19 +4,21 @@ export interface User {
   id: number;
   username: string;
   email: string;
-  profession: string;
+  speciality: string;
   password: string;
+  passwordConfirm: string;
 }
 
 export const createUser = async (
   username: string,
   email: string,
   passwordHash: string,
-  profession: string
+  passwordConfirm: string,
+  speciality: string
 ): Promise<User> => {
   const result = await pool.query(
-    'INSERT INTO users (username, email, password, profession) VALUES ($1, $2, $3, $4) RETURNING *',
-    [username, email, passwordHash, profession]
+    'INSERT INTO users (username, email, password,passwordConfirm, speciality) VALUES ($1, $2, $3, $4) RETURNING *',
+    [username, email, passwordHash, passwordConfirm, speciality]
   );
   return result.rows[0];
 };

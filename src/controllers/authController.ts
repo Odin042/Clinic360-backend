@@ -12,7 +12,7 @@ export const register = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { username, email, password, profession } = req.body;
+    const { username, email, password, passwordConfirm, speciality } = req.body;
 
     if (!password) {
       res.status(400).json({ message: 'Senha é obrigatória.' });
@@ -26,7 +26,8 @@ export const register = async (
     }
 
     const passwordHash = await bcryptjs.hash(password, 10);
-    const user = await createUser(username, email, passwordHash, profession);
+    const passwordConfirmHash = await bcryptjs.hash(passwordConfirm, 10);
+    const user = await createUser(username, email, passwordHash, passwordConfirmHash, speciality);
 
     res.status(201).json({ message: 'Usuário registrado com sucesso!', user });
   } catch (error) {
