@@ -6,33 +6,33 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-export const register = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { username, email, password, speciality } = req.body;
+    const { username, email, password, speciality } = req.body
 
     if (!password) {
-      res.status(400).json({ message: 'Senha é obrigatória.' });
-      return;
+      res.status(400).json({ message: 'Senha é obrigatória.' })
+      return
     }
 
-    const existingUser = await findUserByEmail(email);
+    const existingUser = await findUserByEmail(email)
     if (existingUser) {
-      res.status(400).json({ message: 'Usuário já registrado.' });
-      return;
+      res.status(400).json({ message: 'Usuário já registrado.' })
+      return
     }
 
-    const user = await createUser(username, email, password, speciality);
+    const hashedPassword = await bcryptjs.hash(password, 10)
 
-    res.status(201).json({ message: 'Usuário registrado com sucesso!', user });
+    const user = await createUser(username, email, hashedPassword, speciality)
+
+
+
+    res.status(201).json({ message: 'Usuário registrado com sucesso!', user })
   } catch (error) {
-    console.error(error); 
-    res.status(500).json({ message: 'Erro interno no servidor.' });
+    console.error(error)
+    res.status(500).json({ message: 'Erro interno no servidor.' })
   }
-};
+}
 
 export const login = async (
   req: Request,
@@ -47,11 +47,11 @@ export const login = async (
       return;
     }
 
-    const user = await findUserByEmail(email);
+    const user = await findUserByEmail(email)
     if (!user) {
-      res.status(400).json({ message: 'Credenciais inválidas.' });
-      return;
-    }
+      res.status(400).json({ message: "Credenciais inválidas." })
+    return
+  }
 
     const isPasswordValid = await bcryptjs.compare(password, user.password);
     if (!isPasswordValid) {
@@ -72,4 +72,4 @@ export const login = async (
     console.error(error);
     res.status(500).json({ message: 'Erro interno no servidor.' });
   }
-};
+}
