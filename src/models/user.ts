@@ -7,19 +7,25 @@ export interface User {
   speciality: string;
   password: string;
   passwordConfirm: string;
+  cpf_cnpj: string;
+  register: string; 
+  phone: string;
 }
 
 export const createUser = async (
   username: string,
   email: string,
   passwordHash: string,
-  speciality: string
+  speciality: string,
+  cpf_cnpj: string,
+  register: string,
+  phone: string
 ): Promise<User> => {
   console.log("Senha recebida no createUser:", passwordHash)
 
   const result = await pool.query(
-    'INSERT INTO users (username, email, password, speciality) VALUES ($1, $2, $3, $4) RETURNING *',
-    [username, email, passwordHash, speciality]
+    'INSERT INTO users (username, email, password, speciality, cpf_cnpj, register,phone) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+    [username, email, passwordHash, speciality, cpf_cnpj, register, phone]
   )
   return result.rows[0]
 }
