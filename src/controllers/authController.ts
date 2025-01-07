@@ -8,23 +8,19 @@ dotenv.config();
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { username, email, password, speciality } = req.body
+    const { username, email, password, speciality, cpf_cnpj, register, phone } = req.body
     
-    console.log("Senha recebida:", password)
-
     if (!password) {
       res.status(400).json({ message: 'Senha é obrigatória.' })
       return;
     }
 
     const hashedPassword = await bcryptjs.hash(password, 10)
-    console.log("Senha hash:", hashedPassword)
 
-    const user = await createUser(username, email, hashedPassword, speciality)
+    const user = await createUser(username, email, hashedPassword, speciality, cpf_cnpj, register, phone)
     
     res.status(201).json({ message: 'Usuário registrado com sucesso!', user })
   } catch (error) {
-    console.error(error)
     res.status(500).json({ message: 'Erro interno no servidor.' })
   }
 }
@@ -47,7 +43,6 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 
 
     if (!user.password) {
-      console.log("❌ Senha não encontrada no banco!");
       res.status(500).json({ message: "Erro interno no servidor. (Senha ausente)" });
       return;
     }
@@ -60,11 +55,9 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
     }
 
     if (!process.env.JWT_SECRET) {
-      console.error("❌ ERRO: JWT_SECRET não definido no .env!");
       throw new Error("JWT_SECRET não está definido no .env");
     }
     
-    console.log("✅ JWT_SECRET encontrado:", process.env.JWT_SECRET)
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
       expiresIn: '1h',
