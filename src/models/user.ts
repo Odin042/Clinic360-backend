@@ -19,13 +19,14 @@ export const createUser = async (
   speciality: string,
   cpf_cnpj: string,
   register: string,
+  uf: string,
   phone: string
 ): Promise<User> => {
   console.log("Senha recebida no createUser:", passwordHash)
 
   const result = await pool.query(
-    'INSERT INTO users (username, email, password, speciality, cpf_cnpj, register,phone) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-    [username, email, passwordHash, speciality, cpf_cnpj, register, phone]
+    'INSERT INTO users (username, email, password, speciality, cpf_cnpj, register, uf, phone) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+    [username, email, passwordHash, speciality, cpf_cnpj, register,uf,phone]
   )
   return result.rows[0]
 }
