@@ -10,7 +10,7 @@ export const getUserByEmail: RequestHandler = async (req, res) => {
   }
 
   try {
-    const result = await pool.query("SELECT * FROM usuario WHERE email = $1", [email])
+    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email])
     if (result.rows.length === 0) {
       res.status(404).json({ error: "Usuário não encontrado" })
       return
