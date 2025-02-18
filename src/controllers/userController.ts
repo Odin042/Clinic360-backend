@@ -28,9 +28,9 @@ export const getUserByToken: RequestHandler = async (req, res, next) => {
     const user = result.rows[0]
     delete user.password
 
-    // Chame res.json(...) SEM retornar
+
     res.json(user)
-    // Pronto! Acabou. Sem `return res.json(...)`
+
     
   } catch (error) {
     console.error(error)
