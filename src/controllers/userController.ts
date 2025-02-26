@@ -1,23 +1,39 @@
-import type { Request, Response } from "express"
-import  pool  from "../config/db"
+import type { RequestHandler } from "express"
+import pool from "../config/db"
+import admin from "../config/firebaseAdmin"
 
-
-export const getUserByEmail = async (req: Request, res: Response) => {
-  const { email } = req.query
-
-  if (!email) {
-    return res.status(400).json({ error: "Email é obrigatório" })
-  }
-
+export const getUserByToken: RequestHandler = async (req, res, next) => {
   try {
-    const result = await pool.query("SELECT * FROM usuario WHERE email = $1", [email])
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Usuário não encontrado" })
+    const authHeader = req.headers.authorization
+    if (!authHeader) {
+      res.status(401).json({ error: "Token não fornecido" })
+      return 
     }
 
-    res.json(result.rows[0])
+    const token = authHeader.split(" ")[1]
+    const decodedToken = await admin.auth().verifyIdToken(token)
+    const email = decodedToken.email
+
+    if (!email) {
+      res.status(400).json({ error: "Token não contém e-mail." })
+      return
+    }
+
+    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email])
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: "Usuário não encontrado" })
+      return
+    }
+
+    const user = result.rows[0]
+    delete user.password
+
+
+    res.json(user)
+
+    
   } catch (error) {
-    console.error("Erro ao buscar usuário:", error)
-    res.status(500).json({ error: "Erro no servidor" })
+    console.error(error)
+    res.status(401).json({ error: "Token inválido ou erro na validação." })
   }
 }
