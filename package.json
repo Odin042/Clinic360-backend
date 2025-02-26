@@ -5,6 +5,7 @@
   "scripts": {
     "start": "bun run src/index.ts",
     "dev": "bun run src/index.ts --watch",
+    "build": "bun build src/index.ts --target=bun",
     "test-db": "bun run src/config/db.ts"
   },
   "devDependencies": {
