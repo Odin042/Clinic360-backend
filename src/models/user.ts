@@ -47,7 +47,7 @@ export const createUser = async (
     let personId: number
     if (person.rows.length === 0) {
       const personResult = await client.query(
-        'INSERT INTO persons (name, cpf_cnpj, phone) VALUES ($1, $2, $3) RETURNING id',
+        'INSERT INTO public.persons (name, cpf_cnpj, phone) VALUES ($1, $2, $3) RETURNING id',
         [username, cpf_cnpj, phone]
       )
       personId = personResult.rows[0].id
