@@ -33,7 +33,8 @@ const findOrCreatePerson = async (
   client: any,
   name: string,
   cpf_cnpj: string,
-  phone: string
+  phone: string,
+  gender: string
 ): Promise<number> => {
   const checkPerson = await client.query(
     'SELECT id FROM persons WHERE cpf_cnpj = $1', 
@@ -46,11 +47,11 @@ const findOrCreatePerson = async (
 
   const newPerson = await client.query(
     `INSERT INTO persons 
-    (name, cpf_cnpj, phone,gender, type, status) 
-    VALUES ($1, $2, $3, 'person', true) 
+    (name, cpf_cnpj, phone, gender, type, status) 
+    VALUES ($1, $2, $3, $4, $5, $6) 
     RETURNING id`,
-    [name, cpf_cnpj, phone]
-  );
+    [name, cpf_cnpj, phone, gender, 'person', true]
+  )
 
   return newPerson.rows[0].id;
 };
@@ -72,7 +73,7 @@ export const createUser = async (
     await client.query('BEGIN');
 
     
-    const personId = await findOrCreatePerson(client, username, cpf_cnpj, phone);
+    const personId = await findOrCreatePerson(client, username, cpf_cnpj, phone, gender);
 
 
     const userType = speciality ? 'Doctor' : 'User';

@@ -8,7 +8,7 @@ dotenv.config();
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { username, email, password, speciality, cpf_cnpj,gender, register, uf, phone } = req.body;
+    const { username, email, password, speciality, cpf_cnpj, gender, register, uf, phone } = req.body;
     
     if (!password) {
       res.status(400).json({ message: 'Senha é obrigatória.' });
