@@ -8,7 +8,7 @@ dotenv.config();
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { username, email, password, speciality, cpf_cnpj, register, uf, phone } = req.body;
+    const { username, email, password, speciality, cpf_cnpj,gender, register, uf, phone } = req.body;
     
     if (!password) {
       res.status(400).json({ message: 'Senha é obrigatória.' });
@@ -17,7 +17,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     const hashedPassword = await bcryptjs.hash(password, 10);
 
-    const user = await createUser(username, email, hashedPassword, speciality || null, cpf_cnpj, register, uf, phone);
+    const user = await createUser(username, email, hashedPassword, speciality || null, cpf_cnpj,gender, register, uf, phone);
     
     res.status(201).json({ message: 'Usuário registrado com sucesso!', user });
   } catch (error) {
