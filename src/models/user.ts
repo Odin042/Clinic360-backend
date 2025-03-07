@@ -46,7 +46,7 @@ const findOrCreatePerson = async (
 
   const newPerson = await client.query(
     `INSERT INTO persons 
-    (name, cpf_cnpj, phone, type, status) 
+    (name, cpf_cnpj, phone,gender, type, status) 
     VALUES ($1, $2, $3, 'person', true) 
     RETURNING id`,
     [name, cpf_cnpj, phone]
@@ -63,7 +63,8 @@ export const createUser = async (
   cpf_cnpj: string,
   register: string,
   uf: string,
-  phone: string 
+  phone: string,
+  gender: string
 ): Promise<User> => {
   const client = await pool.connect();
 
@@ -79,8 +80,8 @@ export const createUser = async (
    
     const userResult = await client.query(
       `INSERT INTO users 
-      (username, email, password, speciality, cpf_cnpj, register, uf, phone, type, person_id) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+      (username, email, password, speciality, cpf_cnpj, gender, register, uf, phone, type, person_id) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
       RETURNING *`,
       [
         username,
@@ -88,6 +89,7 @@ export const createUser = async (
         passwordHash,
         speciality,
         cpf_cnpj,
+        gender,
         register,
         uf,
         phone,
