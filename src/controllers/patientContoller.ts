@@ -63,7 +63,7 @@ export const createPatient: RequestHandler = async (req, res, next) => {
 
     const result = await pool.query(
       `
-        INSERT INTO patients
+        INSERT INTO patient
           (name, birthday, gender, email, whatsapp, place_of_service,
            occupation, cpf_cnpj, rg, address, health_plan, weight, height)
         VALUES
