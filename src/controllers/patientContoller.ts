@@ -15,8 +15,8 @@ interface Patient {
   rg: string
   address: string
   health_plan: string
-  weight: number
-  height: number
+  weight: string
+  height: string
 }
 
 export const createPatient: RequestHandler = async (req, res, next) => {
@@ -64,14 +64,13 @@ export const createPatient: RequestHandler = async (req, res, next) => {
     const result = await pool.query(
       `
         INSERT INTO patients
-          (doctor_id, name, birthday, gender, email, whatsapp, place_of_service,
+          (name, birthday, gender, email, whatsapp, place_of_service,
            occupation, cpf_cnpj, rg, address, health_plan, weight, height)
         VALUES
-          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING *
       `,
       [
-        user.id,  
         name,
         birthday,
         gender,
