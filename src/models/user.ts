@@ -62,10 +62,10 @@ export const createUser = async (
   passwordHash: string,
   speciality: string | null,
   cpf_cnpj: string,
-  register: string,
-  uf: string,
-  phone: string,
-  gender: string
+  gender: string,    
+  register: string,  
+  uf: string,        
+  phone: string     
 ): Promise<User> => {
   const client = await pool.connect();
 
@@ -79,23 +79,23 @@ export const createUser = async (
     const userType = speciality ? 'Doctor' : 'User';
 
    
-    const userResult = await client.query(
-      `INSERT INTO users 
-      (username, email, password, speciality, cpf_cnpj, gender, register, uf, phone, type, person_id) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
-      RETURNING *`,
+    const userResult = await client.query(`
+      INSERT INTO users
+        (username, email, password, speciality, cpf_cnpj, gender, register, uf, phone, type, person_id)
+      VALUES
+        ($1, $2, $3, $4,  $5, $6,  $7,  $8, $9, $10, $11)`,
       [
-        username,
-        email,
-        passwordHash,
-        speciality,
-        cpf_cnpj,
-        gender,
-        register,
-        uf,
-        phone,
-        userType, 
-        personId  
+        username,     
+        email,        
+        passwordHash, 
+        speciality,   
+        cpf_cnpj,     
+        gender,       
+        register,     
+        uf,           
+        phone,        
+        userType,     
+        personId      
       ]
     );
 
