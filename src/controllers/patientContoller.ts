@@ -3,6 +3,7 @@ import pool from "../config/db"
 import admin from "../config/firebaseAdmin"
 import { findUserByEmail } from "../models/user"
 
+
 interface Patient {
   name: string
   birthday: string
@@ -19,6 +20,7 @@ interface Patient {
   height: string
 }
 
+
 export const createPatient: RequestHandler = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization
@@ -33,16 +35,19 @@ export const createPatient: RequestHandler = async (req, res, next) => {
     const email = decodedToken.email
 
     if (!email) {
-      return res.status(400).json({ error: "Token não contém e-mail." })
+      res.status(400).json({ error: "Token não contém e-mail." })
+      return
     }
 
     const user = await findUserByEmail(email)
     if (!user) {
-      return res.status(404).json({ error: "Usuário não encontrado" })
+      res.status(404).json({ error: "Usuário não encontrado" })
+      return
     }
 
     if (user.type !== "Doctor") {
-      return res.status(403).json({ error: "Apenas médicos podem criar pacientes." })
+      res.status(403).json({ error: "Apenas médicos podem criar pacientes." })
+      return
     }
 
     const {
@@ -87,11 +92,50 @@ export const createPatient: RequestHandler = async (req, res, next) => {
       ]
     )
 
-    
     res.status(201).json(result.rows[0])
 
   } catch (error) {
     console.error(error)
-    return res.status(500).json({ error: "Erro ao criar paciente." })
+    res.status(500).json({ error: "Erro ao criar paciente." })
+  }
+}
+
+
+export const getPatients: RequestHandler = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization
+
+    if (!authHeader) {
+      res.status(401).json({ error: "Token não fornecido" })
+      return
+    }
+
+    const token = authHeader.split(" ")[1]
+    const decodedToken = await admin.auth().verifyIdToken(token)
+    const email = decodedToken.email
+
+    if (!email) {
+      res.status(400).json({ error: "Token não contém e-mail." })
+      return
+    }
+
+    const user = await findUserByEmail(email)
+    if (!user) {
+      res.status(404).json({ error: "Usuário não encontrado" })
+      return
+    }
+
+    if (user.type !== "Doctor") {
+      res.status(403).json({ error: "Apenas médicos podem acessar os pacientes." })
+      return
+    }
+
+ 
+    const result = await pool.query("SELECT * FROM patient")
+
+    res.status(200).json(result.rows)
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: "Erro ao obter pacientes." })
   }
 }
