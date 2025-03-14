@@ -10,6 +10,6 @@ const router = Router()
 router.post('/register', register)
 router.post('/login', login)
 router.get('/user', getUserByToken)
-router.post('/patient', createPatient)
+router.post('/patient', createPatient) 
 
 export default router

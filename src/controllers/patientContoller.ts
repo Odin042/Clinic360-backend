@@ -33,16 +33,19 @@ export const createPatient: RequestHandler = async (req, res, next) => {
     const email = decodedToken.email
 
     if (!email) {
-      return res.status(400).json({ error: "Token não contém e-mail." })
+      res.status(400).json({ error: "Token não contém e-mail." })
+      return
     }
 
     const user = await findUserByEmail(email)
     if (!user) {
-      return res.status(404).json({ error: "Usuário não encontrado" })
+      res.status(404).json({ error: "Usuário não encontrado" })
+      return
     }
 
     if (user.type !== "Doctor") {
-      return res.status(403).json({ error: "Apenas médicos podem criar pacientes." })
+      res.status(403).json({ error: "Apenas médicos podem criar pacientes." })
+      return
     }
 
     const {
@@ -87,11 +90,11 @@ export const createPatient: RequestHandler = async (req, res, next) => {
       ]
     )
 
-    
     res.status(201).json(result.rows[0])
 
   } catch (error) {
     console.error(error)
-    return res.status(500).json({ error: "Erro ao criar paciente." })
+    res.status(500).json({ error: "Erro ao criar paciente." })
   }
 }
+
