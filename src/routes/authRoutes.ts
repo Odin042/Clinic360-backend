@@ -11,6 +11,6 @@ router.post('/register', register)
 router.post('/login', login)
 router.get('/user', getUserByToken)
 router.post("/patient", createPatient)   
-router.get("/patient", getPatients)
+router.get("/patient/list", getPatients)
 
 export default router
