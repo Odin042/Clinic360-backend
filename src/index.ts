@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 5000
 const allowedOrigins = [
   'http://localhost:5173',
   'https://clinic360pro.com.br',
+  'clinic360pro-git-homolog-odin042s-projects.vercel.app',
   'localhost:5173'
 ]
 
