@@ -36,6 +36,13 @@ app.use((req, res, next) => {
   next()
 })
 
+app.get('/check-env', (req, res) => {
+  res.json({
+    databaseUrl: process.env.DATABASE_URL,
+    envs: process.env
+  })
+})
+
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`)
   console.log('Database URL:', process.env.DATABASE_URL)
