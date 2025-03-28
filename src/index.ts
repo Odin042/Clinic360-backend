@@ -11,14 +11,6 @@ const PORT = process.env.PORT || 5000
 
 console.log('Database URL:', process.env.DATABASE_URL)
 
-
-// const allowedOrigins = [
-//   'http://localhost:5173',
-//   'https://clinic360pro.com.br',
-//   'https://clinic360pro-git-homolog-odin042s-projects.vercel.app',
-//   'localhost:5173'
-// ]
-
 const corsOptions = {
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
