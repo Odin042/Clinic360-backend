@@ -1,8 +1,6 @@
 import type { RequestHandler } from "express"
 import pool from "../config/db"
 import admin from "../config/firebaseAdmin"
-import { findUserByEmail } from "../models/user"
-
 
 interface Patient {
   name: string
@@ -20,11 +18,9 @@ interface Patient {
   height: string
 }
 
-
-export const createPatient: RequestHandler = async (req, res, next) => {
+export const createPatient: RequestHandler = async (req, res) => {
   try {
     const authHeader = req.headers.authorization
-
     if (!authHeader) {
       res.status(401).json({ error: "Token não fornecido" })
       return
@@ -39,16 +35,34 @@ export const createPatient: RequestHandler = async (req, res, next) => {
       return
     }
 
-    const user = await findUserByEmail(email)
-    if (!user) {
+    const userResult = await pool.query(
+      "SELECT * FROM users WHERE email = $1",
+      [email]
+    )
+
+    if (userResult.rows.length === 0) {
       res.status(404).json({ error: "Usuário não encontrado" })
       return
     }
+
+    const user = userResult.rows[0]
 
     if (user.type !== "Doctor") {
       res.status(403).json({ error: "Apenas médicos podem criar pacientes." })
       return
     }
+
+    const doctorResult = await pool.query(
+      "SELECT id FROM doctor WHERE user_id = $1",
+      [user.id]
+    )
+
+    if (doctorResult.rows.length === 0) {
+      res.status(404).json({ error: "Médico não encontrado na tabela doctor" })
+      return
+    }
+
+    const doctorId = doctorResult.rows[0].id
 
     const {
       name,
@@ -63,17 +77,17 @@ export const createPatient: RequestHandler = async (req, res, next) => {
       address,
       health_plan,
       weight,
-      height,
+      height
     } = req.body as Patient
 
     const result = await pool.query(
       `
-        INSERT INTO patient
-          (name, birthday, gender, email, whatsapp, place_of_service,
-           occupation, cpf_cnpj, rg, address, health_plan, weight, height)
-        VALUES
-          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        RETURNING *
+      INSERT INTO patient
+        (name, birthday, gender, email, whatsapp, place_of_service,
+         occupation, cpf_cnpj, rg, address, health_plan, weight, height, doctor_id)
+      VALUES
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING *
       `,
       [
         name,
@@ -88,23 +102,21 @@ export const createPatient: RequestHandler = async (req, res, next) => {
         address,
         health_plan,
         weight,
-        height
+        height,
+        doctorId
       ]
     )
 
     res.status(201).json(result.rows[0])
-
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: "Erro ao criar paciente." })
   }
 }
 
-
-export const getPatients: RequestHandler = async (req, res, next) => {
+export const getPatients: RequestHandler = async (req, res) => {
   try {
     const authHeader = req.headers.authorization
-
     if (!authHeader) {
       res.status(401).json({ error: "Token não fornecido" })
       return
@@ -119,19 +131,39 @@ export const getPatients: RequestHandler = async (req, res, next) => {
       return
     }
 
-    const user = await findUserByEmail(email)
-    if (!user) {
+    const userResult = await pool.query(
+      "SELECT * FROM users WHERE email = $1",
+      [email]
+    )
+
+    if (userResult.rows.length === 0) {
       res.status(404).json({ error: "Usuário não encontrado" })
       return
     }
 
+    const user = userResult.rows[0]
+
     if (user.type !== "Doctor") {
-      res.status(403).json({ error: "Apenas médicos podem acessar os pacientes." })
+      res.status(403).json({ error: "Apenas médicos podem acessar pacientes." })
       return
     }
 
- 
-    const result = await pool.query("SELECT * FROM patient")
+    const doctorResult = await pool.query(
+      "SELECT id FROM doctor WHERE user_id = $1",
+      [user.id]
+    )
+
+    if (doctorResult.rows.length === 0) {
+      res.status(404).json({ error: "Médico não encontrado na tabela doctor" })
+      return
+    }
+
+    const doctorId = doctorResult.rows[0].id
+
+    const result = await pool.query(
+      "SELECT * FROM patient WHERE doctor_id = $1",
+      [doctorId]
+    )
 
     res.status(200).json(result.rows)
   } catch (error) {

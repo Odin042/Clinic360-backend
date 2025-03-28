@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { register, login } from '../controllers/authController'
 import { getUserByToken } from '../controllers/userController'
-import { createPatient, getPatients }  from '../controllers/patientContoller'
+import { createPatient, getPatients }  from '../controllers/patientController'
 import { createAppointment, getAppointments, updateAppointment, deleteAppointment } from '../controllers/appointmentsController'
 
 

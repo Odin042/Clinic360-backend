@@ -94,11 +94,11 @@ export const createUser = async (
     if (userType === 'Doctor') {
       await client.query(
         `
-        INSERT INTO doctor (name, registro, uf, specialty_id, status)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO doctor (name, register, uf, specialty_id, status, user_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
         `,
-        [username, register, uf, speciality, true]
-      );
+        [username, register, uf, speciality, true, newUser.id]
+      )
     }
     await client.query('COMMIT');
     return newUser;
