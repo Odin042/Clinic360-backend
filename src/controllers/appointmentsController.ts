@@ -16,32 +16,44 @@ interface AppointmentInput {
 }
 
 
-export const createAppointment: RequestHandler = async (req, res, next) => {
+export const createAppointment: RequestHandler = async (req, res) => {
   try {
     const authHeader = req.headers.authorization
     if (!authHeader) {
-      res.status(401).json({ message: 'Token não fornecido.' })
+      res.status(401).json({ message: "Token não fornecido." })
       return
     }
 
-    const token = authHeader.split(' ')[1]
+    const token = authHeader.split(" ")[1]
     const decodedToken = await admin.auth().verifyIdToken(token)
     const email = decodedToken.email
     if (!email) {
-      res.status(400).json({ message: 'Token não contém e-mail.' })
+      res.status(400).json({ message: "Token não contém e-mail." })
       return
     }
 
     const user = await findUserByEmail(email)
     if (!user) {
-      res.status(404).json({ message: 'Usuário não encontrado.' })
+      res.status(404).json({ message: "Usuário não encontrado." })
       return
     }
 
-    if (user.type !== 'Doctor') {
-      res.status(403).json({ message: 'Apenas médicos podem criar agendamentos.' })
+    if (user.type !== "Doctor") {
+      res.status(403).json({ message: "Apenas médicos podem criar agendamentos." })
       return
     }
+
+    const doctorResult = await pool.query(
+      "SELECT id FROM doctor WHERE user_id = $1",
+      [user.id]
+    )
+
+    if (doctorResult.rows.length === 0) {
+      res.status(404).json({ message: "Médico não encontrado." })
+      return
+    }
+
+    const doctorId = doctorResult.rows[0].id
 
     const {
       patient_id,
@@ -52,8 +64,8 @@ export const createAppointment: RequestHandler = async (req, res, next) => {
       start_time,
       end_time,
       timezone,
-      description,
-    } = req.body as AppointmentInput
+      description
+    } = req.body
 
     const result = await pool.query(
       `
@@ -64,7 +76,7 @@ export const createAppointment: RequestHandler = async (req, res, next) => {
       RETURNING *
       `,
       [
-        user.id,
+        doctorId,
         patient_id,
         type,
         status,
@@ -73,43 +85,46 @@ export const createAppointment: RequestHandler = async (req, res, next) => {
         start_time,
         end_time,
         timezone,
-        description,
+        description
       ]
     )
 
     res.status(201).json({
-      message: 'Agendamento criado com sucesso!',
-      appointment: result.rows[0],
+      message: "Agendamento criado com sucesso!",
+      appointment: result.rows[0]
     })
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao criar agendamento.', error })
+    console.error(error)
+    res.status(500).json({ message: "Erro ao criar agendamento.", error })
   }
 }
 
-export const getAppointments: RequestHandler = async (req, res, next) => {
+
+export const getAppointments: RequestHandler = async (req, res) => {
   try {
     const authHeader = req.headers.authorization
     if (!authHeader) {
-      res.status(401).json({ message: 'Token não fornecido.' })
+      res.status(401).json({ message: "Token não fornecido." })
       return
     }
 
-    const token = authHeader.split(' ')[1]
+    const token = authHeader.split(" ")[1]
     const decodedToken = await admin.auth().verifyIdToken(token)
     const email = decodedToken.email
+
     if (!email) {
-      res.status(400).json({ message: 'Token não contém e-mail.' })
+      res.status(400).json({ message: "Token não contém e-mail." })
       return
     }
 
     const user = await findUserByEmail(email)
     if (!user) {
-      res.status(404).json({ message: 'Usuário não encontrado.' })
+      res.status(404).json({ message: "Usuário não encontrado." })
       return
     }
 
-    if (user.type !== 'Doctor') {
-      res.status(403).json({ message: 'Apenas médicos podem listar agendamentos.' })
+    if (user.type !== "Doctor") {
+      res.status(403).json({ message: "Apenas médicos podem listar agendamentos." })
       return
     }
 
@@ -117,7 +132,7 @@ export const getAppointments: RequestHandler = async (req, res, next) => {
       `
       SELECT a.*
       FROM appointments a
-      WHERE a.doctor_id = $1
+      WHERE a.doctor_id = (SELECT id FROM doctor WHERE user_id = $1)
       ORDER BY a.start_time DESC
       `,
       [user.id]
@@ -125,7 +140,8 @@ export const getAppointments: RequestHandler = async (req, res, next) => {
 
     res.status(200).json(result.rows)
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao obter agendamentos.', error })
+    console.error(error)
+    res.status(500).json({ message: "Erro ao obter agendamentos.", error })
   }
 }
 
