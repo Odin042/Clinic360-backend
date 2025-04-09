@@ -9,6 +9,7 @@ interface AppointmentInput {
   status: string
   place_of_service: string
   service: string
+  online_service: boolean
   start_time: string
   end_time: string
   timezone: string
@@ -61,6 +62,7 @@ export const createAppointment: RequestHandler = async (req, res) => {
       status,
       place_of_service,
       service,
+      online_service,
       start_time,
       end_time,
       timezone,
@@ -70,9 +72,9 @@ export const createAppointment: RequestHandler = async (req, res) => {
     const result = await pool.query(
       `
       INSERT INTO appointments
-        (doctor_id, patient_id, type, status, place_of_service, service,
+        (doctor_id, patient_id, type, status, place_of_service, service,online_service,
          start_time, end_time, timezone, description)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
       `,
       [
@@ -82,6 +84,7 @@ export const createAppointment: RequestHandler = async (req, res) => {
         status,
         place_of_service,
         service,
+        online_service,
         start_time,
         end_time,
         timezone,
@@ -181,6 +184,7 @@ export const updateAppointment: RequestHandler = async (req, res, next) => {
       status,
       place_of_service,
       service,
+      online_service,
       start_time,
       end_time,
       timezone,
@@ -196,13 +200,14 @@ export const updateAppointment: RequestHandler = async (req, res, next) => {
         status = $3,
         place_of_service = $4,
         service = $5,
-        start_time = $6,
-        end_time = $7,
-        timezone = $8,
-        description = $9,
+        online_service = $6,
+        start_time = $7,
+        end_time = $8,
+        timezone = $9,
+        description = $10,
         updated_at = NOW()
-      WHERE id = $10
-        AND doctor_id = $11
+      WHERE id = $11
+        AND doctor_id = $12
       RETURNING *
       `,
       [
@@ -211,6 +216,7 @@ export const updateAppointment: RequestHandler = async (req, res, next) => {
         status,
         place_of_service,
         service,
+        online_service,
         start_time,
         end_time,
         timezone,
