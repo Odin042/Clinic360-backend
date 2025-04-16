@@ -148,36 +148,42 @@ export const getAppointments: RequestHandler = async (req, res) => {
   }
 }
 
-export const updateAppointment: RequestHandler = async (req, res, next) => {
+export const updateAppointment: RequestHandler = async (req, res) => { 
   try {
     const authHeader = req.headers.authorization
     if (!authHeader) {
-      res.status(401).json({ message: "Token não fornecido." })
+      res.status(401).json({ message: 'Token não fornecido.' })
       return
     }
 
-    const token = authHeader.split(" ")[1]
-    const decodedToken = await admin.auth().verifyIdToken(token)
-    const email = decodedToken.email
+    const token = authHeader.split(' ')[1]
+    const decoded = await admin.auth().verifyIdToken(token)
+    const email = decoded.email
     if (!email) {
-      res.status(400).json({ message: "Token não contém e-mail." })
+      res.status(400).json({ message: 'Token não contém e‑mail.' })
       return
     }
 
     const user = await findUserByEmail(email)
     if (!user) {
-      res.status(404).json({ message: "Usuário não encontrado." })
+      res.status(404).json({ message: 'Usuário não encontrado.' })
       return
     }
 
-    if (user.type !== "Doctor") {
-      res
-        .status(403)
-        .json({ message: "Apenas médicos podem atualizar agendamentos." })
+    if (user.type !== 'Doctor') {
+      res.status(403).json({ message: 'Apenas médicos podem atualizar agendamentos.' })
       return
     }
 
-    const { id } = req.params
+    const doctorQuery = await pool.query('SELECT id FROM doctor WHERE user_id = $1', [user.id])
+    if (doctorQuery.rowCount === 0) {
+      res.status(404).json({ message: 'Médico não encontrado.' })
+      return
+    }
+
+    const doctorId = doctorQuery.rows[0].id
+    const id = Number(req.params.id)
+
     const {
       patient_id,
       type,
@@ -188,27 +194,26 @@ export const updateAppointment: RequestHandler = async (req, res, next) => {
       start_time,
       end_time,
       timezone,
-      description,
+      description
     } = req.body as AppointmentInput
 
     const result = await pool.query(
       `
       UPDATE appointments
-      SET 
-        patient_id = $1,
-        type = $2,
-        status = $3,
-        place_of_service = $4,
-        service = $5,
-        online_service = $6,
-        start_time = $7,
-        end_time = $8,
-        timezone = $9,
-        description = $10,
-        updated_at = NOW()
-      WHERE id = $11
-        AND doctor_id = $12
-      RETURNING *
+         SET patient_id       = $1,
+             type             = $2,
+             status           = $3,
+             place_of_service = $4,
+             service          = $5,
+             online_service   = $6,
+             start_time       = $7,
+             end_time         = $8,
+             timezone         = $9,
+             description      = $10,
+             updated_at       = NOW()
+       WHERE id = $11
+         AND doctor_id = $12
+       RETURNING *;
       `,
       [
         patient_id,
@@ -222,18 +227,18 @@ export const updateAppointment: RequestHandler = async (req, res, next) => {
         timezone,
         description,
         id,
-        user.id,
+        doctorId
       ]
     )
 
     if (result.rowCount === 0) {
-      res.status(404).json({ message: "Agendamento não encontrado." })
+      res.status(404).json({ message: 'Agendamento não encontrado.' })
       return
     }
 
-    res.status(200).json({ message: "Agendamento atualizado.", appointment: result.rows[0] })
+    res.status(200).json({ message: 'Agendamento atualizado.', appointment: result.rows[0] })
   } catch (error) {
-    res.status(500).json({ message: "Erro ao atualizar agendamento.", error })
+    res.status(500).json({ message: 'Erro ao atualizar agendamento.', error })
   }
 }
 
