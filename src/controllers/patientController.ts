@@ -171,3 +171,67 @@ export const getPatients: RequestHandler = async (req, res) => {
     res.status(500).json({ error: "Erro ao obter pacientes." })
   }
 }
+
+export const getPatientById: RequestHandler = async (req, res) => {
+  try {
+    
+    const authHeader = req.headers.authorization
+    if (!authHeader) {
+      res.status(401).json({ error: 'Token não fornecido' })
+      return
+    }
+
+    const token = authHeader.split(' ')[1]
+    const { email } = await admin.auth().verifyIdToken(token)
+    if (!email) {
+      res.status(400).json({ error: 'Token não contém e-mail' })
+      return
+    }
+
+    
+    const userRes = await pool.query(
+      'SELECT id, type FROM users WHERE email = $1',
+      [email]
+    )
+    if (!userRes.rowCount) {
+      res.status(404).json({ error: 'Usuário não encontrado' })
+      return
+    }
+    if (userRes.rows[0].type !== 'Doctor') {
+      res.status(403).json({ error: 'Apenas médicos podem acessar pacientes' })
+      return
+    }
+
+    const docRes = await pool.query(
+      'SELECT id FROM doctor WHERE user_id = $1',
+      [userRes.rows[0].id]
+    )
+    if (!docRes.rowCount) {
+      res.status(404).json({ error: 'Médico não encontrado' })
+      return
+    }
+    const doctorId = docRes.rows[0].id
+
+  
+    const patientId = Number.parseInt(req.params.id, 10)
+    if (Number.isNaN(patientId)) {
+      res.status(400).json({ error: 'Parâmetro id inválido' })
+      return
+    }
+
+  
+    const patRes = await pool.query(
+      'SELECT * FROM patient WHERE id = $1 AND doctor_id = $2',
+      [patientId, doctorId]
+    )
+    if (!patRes.rowCount) {
+      res.status(404).json({ error: 'Paciente não encontrado' })
+      return
+    }
+
+    res.status(200).json(patRes.rows[0])
+  } catch (err: any) {
+    console.error('GET /patient/:id error →', err)
+    res.status(500).json({ error: err.message || 'Erro ao obter paciente' })
+  }
+}
