@@ -6,24 +6,39 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-export const register = async (req: Request, res: Response): Promise<void> => {
+export const register =  async (req: Request, res: Response): Promise<void> => {
   try {
-    const { username, email, password, speciality, cpf_cnpj, register, uf, phone } = req.body
-    
-    if (!password) {
-      res.status(400).json({ message: 'Senha é obrigatória.' })
-      return;
-    }
+    const {
+      username,
+      email,
+      password,
+      speciality,
+      cpf_cnpj,
+      gender,
+      register,
+      uf,
+      phone,
+    } = req.body
 
-    const hashedPassword = await bcryptjs.hash(password, 10)
+    const passwordHash = await bcryptjs.hash(password, 10)
+    const newUser = await createUser(
+      username,
+      email,
+      passwordHash,
+      speciality,
+      cpf_cnpj,
+      gender,
+      register,
+      uf,
+      phone
+    )
 
-    const user = await createUser(username, email, hashedPassword, speciality, cpf_cnpj, register, uf, phone)
-    
-    res.status(201).json({ message: 'Usuário registrado com sucesso!', user })
+    res.status(201).json({ message: "Usuário criado com sucesso", user: newUser })
   } catch (error) {
-    res.status(500).json({ message: 'Erro interno no servidor.' })
+    res.status(500).json({ error: "Erro ao criar usuário." })
   }
 }
+
 
 export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
