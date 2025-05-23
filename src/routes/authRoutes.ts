@@ -4,6 +4,7 @@ import { getUserByToken } from '../controllers/userController'
 import { createPatient, getPatientById, getPatients }  from '../controllers/patientController'
 import { createAppointment, getAppointments, updateAppointment, deleteAppointment } from '../controllers/appointmentsController'
 import { createRecord, listRecords } from '../controllers/medicalRecordController'
+import { createAnamnesis, listAnamnesis } from '../controllers/anamnesisController'
 
 
 const router = Router()
@@ -24,6 +25,8 @@ router.get("/appointments/list", getAppointments)
 router.put("/appointments/:id", updateAppointment)
 router.delete("/appointments/:id", deleteAppointment)
 
+router.post('/patient/:id/anamnesis', createAnamnesis)
+router.get('/patient/:id/anamnesis', listAnamnesis)
 
 
 export default router
