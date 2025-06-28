@@ -23,9 +23,9 @@ if (!serviceAccount.private_key?.includes("BEGIN PRIVATE KEY")) {
 
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount as admin.ServiceAccount)
-});
+  credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET
+})
 
-console.log("✅ Firebase Admin inicializado com sucesso!");
 
 export default admin;
