@@ -30,6 +30,7 @@ export const getUserByToken: RequestHandler = async (req, res, next) => {
 
 
     res.json(user)
+    console.log(user)
 
     
   } catch (error) {
