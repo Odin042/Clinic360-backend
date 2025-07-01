@@ -28,8 +28,14 @@ const corsOptions = {
   optionsSuccessStatus: 200
 }
 
-app.use(cors(corsOptions))
-app.options('*', cors(corsOptions))
+app.use(cors({
+  origin: true, 
+  credentials: true
+}))
+app.options('*', cors({
+  origin: true,
+  credentials: true
+}))
 app.use(express.json())
 app.use(authRoutes)
 
