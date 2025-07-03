@@ -9,7 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 const allowedOrigins = [
-  'http://localhost:5173',       
+  'http://localhost:5173',
   'https://clinic360pro-git-homolog-clinic360pro.vercel.app',
   'https://*.vercel.app'
 ];
@@ -18,27 +18,23 @@ const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
     
-  
-    console.log(`Origin recebida: ${origin}`);
-    
     const isAllowed = 
       allowedOrigins.includes(origin) ||
-      origin.endsWith('.vercel.app') || 
-      origin.includes('localhost:5173'); 
+      origin.endsWith('.vercel.app');
     
     if (isAllowed) {
       callback(null, true);
     } else {
-      console.warn(`⚠️ Origem bloqueada: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 204
 };
 
+app.options('*', cors(corsOptions));
 app.set('trust proxy', 1);
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -48,8 +44,17 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    return res.status(204).end();
+  }
+  next();
+});
+
 app.use(authRoutes);
 
 app.listen(PORT, () => {
-  console.log(`✅ Servidor rodando na porta ${PORT}`);
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
