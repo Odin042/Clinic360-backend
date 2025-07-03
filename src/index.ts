@@ -29,10 +29,23 @@ const corsOptions = {
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true,
+  exposedHeaders: ['Set-Cookie'],
   optionsSuccessStatus: 204
 };
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.some(allowedOrigin => 
+      origin === allowedOrigin || origin.endsWith('.vercel.app'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  next();
+});
 
 app.options('*', cors(corsOptions));
 app.set('trust proxy', 1);
@@ -41,15 +54,6 @@ app.use(express.json());
 
 app.use((req, res, next) => {
   console.log(`Requisição: ${req.method} ${req.url} | Origem: ${req.headers.origin}`);
-  next();
-});
-
-app.use((req, res, next) => {
-  if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    return res.status(204).end();
-  }
   next();
 });
 
