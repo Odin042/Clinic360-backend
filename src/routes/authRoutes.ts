@@ -5,6 +5,7 @@ import { createPatient, getPatientById, getPatients }  from '../controllers/pati
 import { createAppointment, getAppointments, updateAppointment, deleteAppointment } from '../controllers/appointmentsController'
 import { createRecord, listRecords } from '../controllers/medicalRecordController'
 import { createAnamnesis, listAnamnesis } from '../controllers/anamnesisController'
+import { createMaterial, deleteMaterial, listMaterials, updateMaterial } from '../controllers/materialsController'
 
 
 const router = Router()
@@ -27,6 +28,11 @@ router.delete("/appointments/:id", deleteAppointment)
 
 router.post('/patient/:id/anamnesis', createAnamnesis)
 router.get('/patient/:id/anamnesis', listAnamnesis)
+
+router.post('/materials', createMaterial)
+router.get('/materials/list', listMaterials)
+router.put('/materials/:id', updateMaterial)
+router.delete('/materials/:id', deleteMaterial)
 
 
 export default router
