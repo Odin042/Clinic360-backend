@@ -19,8 +19,10 @@ const corsOptions = {
     if (!origin) return callback(null, true);
     
     const isAllowed = 
-      allowedOrigins.includes(origin) ||
-      origin.endsWith('.vercel.app');
+      allowedOrigins.some(allowedOrigin => 
+        origin === allowedOrigin || 
+        origin.endsWith('.vercel.app')
+      );
     
     if (isAllowed) {
       callback(null, true);
@@ -35,26 +37,34 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
+app.set('trust proxy', true);
+app.enable('trust proxy');
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin && allowedOrigins.some(allowedOrigin => 
       origin === allowedOrigin || origin.endsWith('.vercel.app'))) {
-    res.header('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Origin', origin);
   }
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Expose-Headers', 'Set-Cookie');
   next();
 });
 
-app.options('*', cors(corsOptions));
-app.set('trust proxy', 1);
-app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use((req, res, next) => {
   console.log(`Requisição: ${req.method} ${req.url} | Origem: ${req.headers.origin}`);
   next();
+});
+
+app.get('/cors-test', (req, res) => {
+  res.json({ message: 'CORS test successful', timestamp: new Date() });
 });
 
 app.use(authRoutes);
