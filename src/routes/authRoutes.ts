@@ -5,7 +5,10 @@ import { createPatient, getPatientById, getPatients }  from '../controllers/pati
 import { createAppointment, getAppointments, updateAppointment, deleteAppointment } from '../controllers/appointmentsController'
 import { createRecord, listRecords } from '../controllers/medicalRecordController'
 import { createAnamnesis, listAnamnesis } from '../controllers/anamnesisController'
-import { createMaterial, deleteMaterial, listMaterials, updateMaterial } from '../controllers/materialsController'
+import { createExam, listExams } from '../controllers/examsController'
+import { pdfUpload } from '../middlewares/uploadpdf'
+import { createMaterial, listMaterials, updateMaterial, deleteMaterial } from '../controllers/materialsController'
+
 
 
 const router = Router()
@@ -28,6 +31,14 @@ router.delete("/appointments/:id", deleteAppointment)
 
 router.post('/patient/:id/anamnesis', createAnamnesis)
 router.get('/patient/:id/anamnesis', listAnamnesis)
+router.post('/patient/:id/exams', pdfUpload, createExam)
+router.get('/patient/:id/exams/list', listExams)
+
+router.post('/materials', createMaterial)
+router.get('/materials/list', listMaterials)
+router.put('/materials/:id', updateMaterial)
+router.delete('/materials/:id', deleteMaterial)
+
 
 router.post('/materials', createMaterial)
 router.get('/materials/list', listMaterials)

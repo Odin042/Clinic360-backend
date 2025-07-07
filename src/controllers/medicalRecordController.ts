@@ -1,32 +1,12 @@
 import type { RequestHandler } from 'express'
 import pool from '../config/db'
-import admin from '../config/firebaseAdmin'
+import getDoctorIdFromRequest from '../helpers/auth/getDoctorIdFromRequest'
+
 
 interface RecordPayload {
   note_type?: string          
   content: string
   attachments?: any           
-}
-
-
-async function getDoctorIdFromRequest(req: any) {
-  const authHeader = req.headers.authorization
-  if (!authHeader) throw { status: 401, msg: 'Token não fornecido' }
-
-  const token = authHeader.split(' ')[1]
-  const { email } = await admin.auth().verifyIdToken(token)
-  if (!email) throw { status: 400, msg: 'Token não contém e-mail' }
-
-  const userRes = await pool.query('SELECT * FROM users WHERE email = $1', [email])
-  if (!userRes.rowCount) throw { status: 404, msg: 'Usuário não encontrado' }
-
-  const user = userRes.rows[0]
-  if (user.type !== 'Doctor') throw { status: 403, msg: 'Apenas médicos podem acessar prontuários' }
-
-  const docRes = await pool.query('SELECT id FROM doctor WHERE user_id = $1', [user.id])
-  if (!docRes.rowCount) throw { status: 404, msg: 'Médico não encontrado' }
-
-  return docRes.rows[0].id as number
 }
 
 
