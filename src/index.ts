@@ -11,11 +11,13 @@ const whitelist = [FRONT_URL, FRONT_V2_URL, FRONT_PRD].filter(Boolean)
 
 const corsOptions = {
   origin: (origin, callback) => {
-    console.log('CORS Origin:', origin)
-    if (!origin || whitelist.includes(origin)) {
+    if (
+      !origin ||                                  
+      /\.vercel\.app$/.test(origin) ||            
+      whitelist.includes(origin)                  
+    ) {
       callback(null, true)
     } else {
-      console.warn('Request not allowed by CORS:', origin)
       callback(new Error(`Not allowed by CORS: <${origin}>`))
     }
   },
