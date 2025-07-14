@@ -2,16 +2,16 @@ import type { RequestHandler } from 'express'
 import pool from '../config/db'
 
 export const createMaterial: RequestHandler = async (req, res) => {
-  const { name, category, unit, measures ,stock } = req.body
+  const { name, category, unit, measures, stock, price, brand, user_id, expiration } = req.body
 
-  if (!name || !category || !unit || !measures|| stock === undefined) {
+  if (!name || !category || !unit || !measures || stock === undefined || price === undefined || !brand) {
     return res.status(400).json({ error: 'Todos os campos são obrigatórios' })
   }
 
   try {
     const result = await pool.query(
-      'INSERT INTO materials (name, category, unit, measures,stock ) VALUES ($1, $2, $3, $4,  $5) RETURNING *',
-      [name, category, unit, measures, stock]
+      'INSERT INTO materials (name, category, unit, measures, stock, price, brand, user_id, expiration) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+      [name, category, unit, measures, stock, price, brand, user_id, expiration]
     )
     res.status(201).json(result.rows[0])
   } catch (error) {
@@ -30,12 +30,12 @@ export const listMaterials: RequestHandler = async (_req, res) => {
 
 export const updateMaterial: RequestHandler = async (req, res) => {
   const { id } = req.params
-  const { name, category, unit, measures, stock } = req.body
+  const { name, category, unit, measures, stock, price, brand, user_id, expiration } = req.body
 
   try {
     const result = await pool.query(
-      'UPDATE materials SET name = $1, category = $2, unit = $3, measures  = $4, stock = $5 WHERE id = $6 RETURNING *',
-      [name, category, unit, measures, stock, id]
+      'UPDATE materials SET name = $1, category = $2, unit = $3, measures = $4, stock = $5, price = $6, brand = $7, user_id = $8, expiration = $9 WHERE id = $10 RETURNING *',
+      [name, category, unit, measures, stock, price, brand, user_id, expiration, id]
     )
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Material não encontrado' })
