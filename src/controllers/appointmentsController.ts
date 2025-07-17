@@ -148,7 +148,7 @@ export const getAppointments: RequestHandler = async (req, res) => {
   }
 }
 
-export const updateAppointment: RequestHandler = async (req, res) => { 
+export const updateAppointment: RequestHandler = async (req, res) => {
   try {
     const authHeader = req.headers.authorization
     if (!authHeader) {
@@ -160,7 +160,7 @@ export const updateAppointment: RequestHandler = async (req, res) => {
     const decoded = await admin.auth().verifyIdToken(token)
     const email = decoded.email
     if (!email) {
-      res.status(400).json({ message: 'Token não contém e‑mail.' })
+      res.status(400).json({ message: 'Token não contém e-mail.' })
       return
     }
 
@@ -183,51 +183,60 @@ export const updateAppointment: RequestHandler = async (req, res) => {
 
     const doctorId = doctorQuery.rows[0].id
     const id = Number(req.params.id)
-    const { status, missed } = req.body
 
-    if (status) {
-      const result = await pool.query(
-        `
-        UPDATE appointments
-           SET status = $1,
-               updated_at = NOW()
-         WHERE id = $2
-           AND doctor_id = $3
-         RETURNING *;
-        `,
-        [status, id, doctorId]
-      )
+    const allowedFields = [
+      "type",
+      "status",
+      "place_of_service",
+      "service",
+      "online_service",
+      "start_time",
+      "end_time",
+      "timezone",
+      "description",
+      "missed"
+    ]
 
-      if (result.rowCount === 0) {
-        res.status(404).json({ message: 'Agendamento não encontrado.' })
-        return
+    const updates = []
+    const values = []
+    let i = 1
+
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        updates.push(`${field} = $${i++}`)
+        values.push(req.body[field])
       }
+    })
 
-      res.status(200).json({ message: 'Agendamento atualizado.', appointment: result.rows[0] })
+    if (updates.length === 0) {
+      res.status(400).json({ message: "Nada para atualizar." })
       return
     }
 
-    if (typeof missed !== 'undefined') {
-      const result = await pool.query(
-        'UPDATE appointments SET missed = $1, updated_at = NOW() WHERE id = $2 AND doctor_id = $3 RETURNING *',
-        [missed, id, doctorId]
-      )
+    updates.push(`updated_at = NOW()`)
+    values.push(id, doctorId)
 
-      if (result.rowCount === 0) {
-        res.status(404).json({ message: 'Agendamento não encontrado.' })
-        return
-      }
+    const result = await pool.query(
+      `
+      UPDATE appointments
+         SET ${updates.join(", ")}
+       WHERE id = $${i++}
+         AND doctor_id = $${i}
+       RETURNING *
+      `,
+      values
+    )
 
-      res.status(200).json({ message: 'Agendamento atualizado.', appointment: result.rows[0] })
+    if (result.rowCount === 0) {
+      res.status(404).json({ message: "Agendamento não encontrado." })
       return
     }
 
-    res.status(400).json({ message: 'Nada para atualizar.' })
+    res.status(200).json({ message: "Agendamento atualizado.", appointment: result.rows[0] })
   } catch (error) {
-    res.status(500).json({ message: 'Erro ao atualizar agendamento.', error })
+    res.status(500).json({ message: "Erro ao atualizar agendamento.", error })
   }
 }
-
 
 
 
