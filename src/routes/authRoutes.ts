@@ -6,6 +6,12 @@ import { createAppointment, getAppointments, updateAppointment, deleteAppointmen
 import { createRecord, listRecords } from '../controllers/medicalRecordController'
 import { createAnamnesis, listAnamnesis } from '../controllers/anamnesisController'
 import { createMaterial, deleteMaterial, listMaterials, updateMaterial } from '../controllers/materialsController'
+import {
+  createMachine,
+  listMachines,
+  updateMachine,
+  deleteMachine
+} from '../controllers/machineController'
 
 
 const router = Router()
@@ -33,6 +39,11 @@ router.post('/materials', createMaterial)
 router.get('/materials/list', listMaterials)
 router.put('/materials/:id', updateMaterial)
 router.delete('/materials/:id', deleteMaterial)
+
+router.post('/machines', createMachine)
+router.get('/machines/list', listMachines)
+router.put('/machines/:id', updateMachine)
+router.delete('/machines/:id', deleteMachine)
 
 
 export default router
