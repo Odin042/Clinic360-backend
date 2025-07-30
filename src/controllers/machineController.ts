@@ -11,17 +11,24 @@ export const createMachine: RequestHandler = async (req, res) => {
     machine_value,
     description,
     acquisition_date,
-    is_active
+    is_active,
+    user_id
   } = req.body
 
-  if (!name || !brand || !category || quantity === undefined || cost_per_session === undefined || machine_value === undefined) {
+  if (
+    !name || !brand || !category ||
+    quantity === undefined ||
+    cost_per_session === undefined ||
+    machine_value === undefined ||
+    !user_id
+  ) {
     return res.status(400).json({ error: 'Todos os campos obrigatórios devem ser preenchidos' })
   }
 
   try {
     const result = await pool.query(
-      'INSERT INTO machines (name, brand, category, quantity, cost_per_session, machine_value, description, acquisition_date, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-      [name, brand, category, quantity, cost_per_session, machine_value, description, acquisition_date, is_active]
+      'INSERT INTO machines (name, brand, category, quantity, cost_per_session, machine_value, description, acquisition_date, is_active, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [name, brand, category, quantity, cost_per_session, machine_value, description, acquisition_date, is_active, user_id]
     )
     res.status(201).json(result.rows[0])
   } catch {
@@ -29,9 +36,18 @@ export const createMachine: RequestHandler = async (req, res) => {
   }
 }
 
-export const listMachines: RequestHandler = async (_req, res) => {
+export const listMachines: RequestHandler = async (req, res) => {
+  const userId = req.query.user_id
+
+  if (!userId) {
+    return res.status(400).json({ error: 'Parâmetro user_id é obrigatório' })
+  }
+
   try {
-    const result = await pool.query('SELECT * FROM machines ORDER BY id DESC')
+    const result = await pool.query(
+      'SELECT * FROM machines WHERE user_id = $1 ORDER BY id DESC',
+      [userId]
+    )
     res.json(result.rows)
   } catch {
     res.status(500).json({ error: 'Erro ao listar máquinas' })

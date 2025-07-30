@@ -12,6 +12,7 @@ import {
   updateMachine,
   deleteMachine
 } from '../controllers/machineController'
+import { createPrescription, listPrescriptions, updatePrescription, deletePrescription } from '../controllers/prescriptionsController'
 
 
 const router = Router()
@@ -44,6 +45,11 @@ router.post('/machines', createMachine)
 router.get('/machines/list', listMachines)
 router.put('/machines/:id', updateMachine)
 router.delete('/machines/:id', deleteMachine)
+
+router.post('/prescriptions', createPrescription)
+router.get('/prescriptions/list', listPrescriptions)
+router.put('/prescriptions/:id', updatePrescription)
+router.delete('/prescriptions/:id', deletePrescription)
 
 
 export default router
