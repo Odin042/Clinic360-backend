@@ -1,8 +1,20 @@
 import type { RequestHandler } from 'express'
 import pool from '../config/db'
 
+const sanitize = v => typeof v === 'string' && v.trim() === '' ? null : v
+
 export const createPrescription: RequestHandler = async (req, res) => {
-  const { patient_id, doctor_id, title, date, posology, notes, items } = req.body
+  const {
+    patient_id,
+    doctor_id,
+    title,
+    date,
+    posology_phytotherapy,
+    posology_supplement,
+    posology_medication,
+    notes,
+    items
+  } = req.body
 
   if (!patient_id || !doctor_id || !title || !date) {
     return res.status(400).json({ error: 'Campos obrigatórios: patient_id, doctor_id, title, date' })
@@ -10,8 +22,20 @@ export const createPrescription: RequestHandler = async (req, res) => {
 
   try {
     const prescriptionResult = await pool.query(
-      'INSERT INTO prescriptions (patient_id, doctor_id, title, date, posology, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [patient_id, doctor_id, title, date, posology || null, notes || null]
+      `INSERT INTO prescriptions
+        (patient_id, doctor_id, title, date, posology_phytotherapy, posology_supplement, posology_medication, notes)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *`,
+      [
+        patient_id,
+        doctor_id,
+        title,
+        date,
+        sanitize(posology_phytotherapy),
+        sanitize(posology_supplement),
+        sanitize(posology_medication),
+        sanitize(notes)
+      ]
     )
 
     const prescription = prescriptionResult.rows[0]
@@ -20,7 +44,8 @@ export const createPrescription: RequestHandler = async (req, res) => {
       for (const item of items) {
         const { type, name, dosage, frequency, duration, notes } = item
         await pool.query(
-          'INSERT INTO prescription_items (prescription_id, type, name, dosage, frequency, duration, notes) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+          `INSERT INTO prescription_items (prescription_id, type, name, dosage, frequency, duration, notes)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [prescription.id, type, name, dosage, frequency, duration, notes]
         )
       }
@@ -37,8 +62,10 @@ export const createPrescription: RequestHandler = async (req, res) => {
 export const listPrescriptions: RequestHandler = async (_req, res) => {
   try {
     const result = await pool.query(
-      `SELECT p.*, 
-              json_agg(pi.*) AS items
+      `SELECT p.*,
+              COALESCE(
+                json_agg(pi.*) FILTER (WHERE pi.id IS NOT NULL), '[]'
+              ) AS items
        FROM prescriptions p
        LEFT JOIN prescription_items pi ON p.id = pi.prescription_id
        GROUP BY p.id
@@ -52,14 +79,37 @@ export const listPrescriptions: RequestHandler = async (_req, res) => {
 
 export const updatePrescription: RequestHandler = async (req, res) => {
   const { id } = req.params
-  const { title, date, posology, notes, items } = req.body
+  const {
+    title,
+    date,
+    posology_phytotherapy,
+    posology_supplement,
+    posology_medication,
+    notes,
+    items
+  } = req.body
 
   try {
     const result = await pool.query(
-      `UPDATE prescriptions 
-       SET title = $1, date = $2, posology = $3, notes = $4, updated_at = NOW() 
-       WHERE id = $5 RETURNING *`,
-      [title, date, posology || null, notes || null, id]
+      `UPDATE prescriptions
+         SET title = $1,
+             date = $2,
+             posology_phytotherapy = $3,
+             posology_supplement = $4,
+             posology_medication = $5,
+             notes = $6,
+             updated_at = NOW()
+       WHERE id = $7
+       RETURNING *`,
+      [
+        title,
+        date,
+        sanitize(posology_phytotherapy),
+        sanitize(posology_supplement),
+        sanitize(posology_medication),
+        sanitize(notes),
+        id
+      ]
     )
 
     if (result.rowCount === 0) {
@@ -71,8 +121,7 @@ export const updatePrescription: RequestHandler = async (req, res) => {
       for (const item of items) {
         const { type, name, dosage, frequency, duration, notes } = item
         await pool.query(
-          `INSERT INTO prescription_items 
-           (prescription_id, type, name, dosage, frequency, duration, notes) 
+          `INSERT INTO prescription_items (prescription_id, type, name, dosage, frequency, duration, notes)
            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
           [id, type, name, dosage, frequency, duration, notes]
         )
