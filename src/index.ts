@@ -5,27 +5,41 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-const app = express()
-const PORT = process.env.PORT || 5000
+const { FRONT_URL, FRONT_V2_URL, FRONT_PRD, PORT } = process.env
 
+const whitelist = [FRONT_URL, FRONT_V2_URL, FRONT_PRD].filter(Boolean)
 
 const corsOptions = {
-  origin: '*',
+  origin: (origin, callback) => {
+    console.log('CORS Origin:', origin)
+    if (!origin || whitelist.includes(origin)) {
+      callback(null, true)
+    } else {
+      console.warn('Request not allowed by CORS:', origin)
+      callback(new Error(`Not allowed by CORS: <${origin}>`))
+    }
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
   optionsSuccessStatus: 200
 }
 
-app.use(cors(corsOptions))
-app.use(express.json())
-app.use(authRoutes)
+const app = express()
+
 
 app.use((req, res, next) => {
-  console.log(`Requisição: ${req.method} ${req.url} | Origem: ${req.headers.origin}`)
+  console.log('DEBUG', req.method, req.url, 'Origin:', req.headers.origin)
   next()
 })
 
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`)
+
+app.use(cors(corsOptions))
+app.options('*', cors(corsOptions))
+
+app.use(express.json())
+app.use(authRoutes)
+
+app.listen(PORT || 5000, () => {
+  console.log(`Servidor rodando na porta ${PORT || 5000}`)
 })

@@ -7,7 +7,7 @@ export const getUserByToken: RequestHandler = async (req, res, next) => {
     const authHeader = req.headers.authorization
     if (!authHeader) {
       res.status(401).json({ error: "Token não fornecido" })
-      return 
+      return
     }
 
     const token = authHeader.split(" ")[1]
@@ -29,11 +29,20 @@ export const getUserByToken: RequestHandler = async (req, res, next) => {
     delete user.password
 
 
-    res.json(user)
+    const doctorResult = await pool.query(
+      "SELECT id FROM doctor WHERE user_id = $1",
+      [user.id]
+    )
+    const doctor_id = doctorResult.rows.length > 0 ? doctorResult.rows[0].id : null
 
-    
+    res.json({
+      ...user,
+      doctor_id, 
+      is_doctor: !!doctor_id,
+    })
   } catch (error) {
     console.error(error)
     res.status(401).json({ error: "Token inválido ou erro na validação." })
   }
 }
+
