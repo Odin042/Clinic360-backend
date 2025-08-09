@@ -1,20 +1,17 @@
 import type { RequestHandler } from 'express'
 import pool from '../config/db'
-import type { AuthRequest } from '../middlewares/auth'
-import { toHttpError } from '../helpers/httpError'
 
-const sanitize = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? null : v)
+const sanitize = v => (typeof v === 'string' && v.trim() === '' ? null : v)
 
 export const createPrescription: RequestHandler = async (req, res) => {
   const {
-    patient_id, title, date,
+    patient_id, doctor_id, title, date,
     posology_phytotherapy, posology_supplement,
     posology_medication, notes, items = []
   } = req.body
-  const doctorId = (req as AuthRequest).doctorId
 
-  if (!patient_id || !doctorId || !title || !date)
-    return res.status(400).json({ error: 'Campos obrigatórios: patient_id, title, date' })
+  if (!patient_id || !doctor_id || !title || !date)
+    return res.status(400).json({ error: 'Campos obrigatórios: patient_id, doctor_id, title, date' })
 
   const client = await pool.connect()
   try {
@@ -28,14 +25,14 @@ export const createPrescription: RequestHandler = async (req, res) => {
        VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8)
        RETURNING id`,
       [
-        patient_id, doctorId, title, date.split('T')[0],
+        patient_id, doctor_id, title, date.split('T')[0],
         sanitize(posology_phytotherapy), sanitize(posology_supplement),
         sanitize(posology_medication), sanitize(notes)
       ]
     )
     const pid = ins.rows[0].id
 
-    for (const it of items.filter((i: any) => i?.type && i.name)) {
+    for (const it of items.filter(i => i?.type && i.name)) {
       const { type, name, dosage, frequency, duration, notes: n } = it
       await client.query(
         `INSERT INTO prescription_items
@@ -47,17 +44,16 @@ export const createPrescription: RequestHandler = async (req, res) => {
 
     await client.query('COMMIT')
     res.status(201).json({ id: pid })
-  } catch (err: unknown) {
+  } catch (e) {
     await client.query('ROLLBACK')
-    const { status, message } = toHttpError(err, 'Erro ao salvar prescrição')
-    res.status(status).json({ error: message })
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Erro ao salvar prescrição' })
   } finally {
     client.release()
   }
 }
 
 export const listPrescriptions: RequestHandler = async (req, res) => {
-  const { patient_id } = req.query
+  const { patient_id } = req.query   
   try {
     const result = await pool.query(
       `
@@ -72,9 +68,8 @@ export const listPrescriptions: RequestHandler = async (req, res) => {
       patient_id ? [patient_id] : []
     )
     res.json(result.rows)
-  } catch (err: unknown) {
-    const { status, message } = toHttpError(err, 'Erro ao listar prescrições')
-    res.status(status).json({ error: message })
+  } catch {
+    res.status(500).json({ error: 'Erro ao listar prescrições' })
   }
 }
 
@@ -130,9 +125,8 @@ export const updatePrescription: RequestHandler = async (req, res) => {
     }
 
     res.json(result.rows[0])
-  } catch (err: unknown) {
-    const { status, message } = toHttpError(err, 'Erro ao atualizar prescrição')
-    res.status(status).json({ error: message })
+  } catch {
+    res.status(500).json({ error: 'Erro ao atualizar prescrição' })
   }
 }
 
@@ -147,8 +141,7 @@ export const deletePrescription: RequestHandler = async (req, res) => {
       return res.status(404).json({ error: 'Prescrição não encontrada' })
 
     res.json({ message: 'Prescrição excluída com sucesso' })
-  } catch (err: unknown) {
-    const { status, message } = toHttpError(err, 'Erro ao excluir prescrição')
-    res.status(status).json({ error: message })
+  } catch {
+    res.status(500).json({ error: 'Erro ao excluir prescrição' })
   }
 }

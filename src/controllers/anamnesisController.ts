@@ -1,7 +1,26 @@
 import type { RequestHandler } from 'express'
 import pool from '../config/db'
-import getDoctorIdFromRequest from '../helpers/auth/getDoctorIdFromRequest'
-import { toHttpError } from '../helpers/httpError'
+import admin from '../config/firebaseAdmin'
+
+async function getDoctorIdFromRequest (req: any) {
+  const hdr = req.headers.authorization
+  if (!hdr) throw { status: 401, msg: 'Token não fornecido' }
+
+  const token = hdr.split(' ')[1]
+  const { email } = await admin.auth().verifyIdToken(token)
+  if (!email) throw { status: 400, msg: 'Token não contém e-mail' }
+
+  const usr = await pool.query('select * from users where email = $1', [email])
+  if (!usr.rowCount) throw { status: 404, msg: 'Usuário não encontrado' }
+
+  const user = usr.rows[0]
+  if (user.type !== 'Doctor') throw { status: 403, msg: 'Apenas médicos podem acessar anamneses' }
+
+  const doc = await pool.query('select id from doctor where user_id = $1', [user.id])
+  if (!doc.rowCount) throw { status: 404, msg: 'Médico não encontrado' }
+
+  return doc.rows[0].id as number
+}
 
 interface AnamnesisPayload {
   specialty: string
@@ -42,10 +61,9 @@ export const createAnamnesis: RequestHandler = async (req, res) => {
     )
 
     res.status(201).json(rows[0])
-  } catch (err: unknown) {
+  } catch (err: any) {
     console.error(err)
-    const { status, message } = toHttpError(err, 'Erro ao criar anamnese')
-    res.status(status).json({ error: message })
+    res.status(err.status || 500).json({ error: err.msg || 'Erro ao criar anamnese' })
   }
 }
 
@@ -71,9 +89,8 @@ export const listAnamnesis: RequestHandler = async (req, res) => {
     )
 
     res.json(rows)
-  } catch (err: unknown) {
+  } catch (err: any) {
     console.error(err)
-    const { status, message } = toHttpError(err, 'Erro ao listar anamneses')
-    res.status(status).json({ error: message })
+    res.status(err.status || 500).json({ error: err.msg || 'Erro ao listar anamneses' })
   }
 }

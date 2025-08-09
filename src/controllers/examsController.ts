@@ -3,7 +3,7 @@ import pool from '../config/db'
 import { getStorage } from 'firebase-admin/storage'
 import dayjs from 'dayjs'
 import getDoctorIdFromRequest from '../helpers/auth/getDoctorIdFromRequest'
-import { toHttpError } from '../helpers/httpError'
+import { extractMetrics, saveMetrics } from '../services/metrics'
 
 export const createExam: RequestHandler = async (req, res) => {
   try {
@@ -28,18 +28,19 @@ export const createExam: RequestHandler = async (req, res) => {
     })
 
     const { examDate } = req.body
-    await pool.query(
+    const { rows } = await pool.query(
       `insert into exam (patient_id, doctor_id, file_name, file_url, exam_date)
-       values ($1,$2,$3,$4,$5)`,
+       values ($1,$2,$3,$4,$5)
+       returning id, created_at`,
       [patientId, doctorId, req.file.originalname, url,
        examDate ? dayjs(examDate).format('YYYY-MM-DD') : null]
     )
 
-    res.status(201).json()
-  } catch (err: unknown) {
+   
+     res.status(201).json()
+  } catch (err: any) {
     console.error(err)
-    const { status, message } = toHttpError(err, 'Erro ao enviar exame')
-    res.status(status).json({ error: message })
+    res.status(err.status || 500).json({ error: err.msg || 'Erro ao enviar exame' })
   }
 }
 
@@ -66,9 +67,8 @@ export const listExams: RequestHandler = async (req, res) => {
     )
 
     res.json(rows)
-  } catch (err: unknown) {
+  } catch (err: any) {
     console.error(err)
-    const { status, message } = toHttpError(err, 'Erro ao listar exames')
-    res.status(status).json({ error: message })
+    res.status(err.status || 500).json({ error: err.msg || 'Erro ao listar exames' })
   }
 }
