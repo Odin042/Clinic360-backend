@@ -1,16 +1,13 @@
+import { FRONT_URL, FRONT_V2_URL, FRONT_PRD, PORT } from './config/env'
 import express from 'express'
 import cors from 'cors'
+import type { CorsOptions } from 'cors'
 import authRoutes from './routes/authRoutes'
-import dotenv from 'dotenv'
-
-dotenv.config()
-
-const { FRONT_URL, FRONT_V2_URL, FRONT_PRD, PORT } = process.env
 
 const whitelist = [FRONT_URL, FRONT_V2_URL, FRONT_PRD].filter(Boolean)
 
-const corsOptions = {
-  origin: (origin, callback) => {
+const corsOptions: CorsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     console.log('CORS Origin:', origin)
     if (!origin || whitelist.includes(origin)) {
       callback(null, true)
@@ -27,12 +24,10 @@ const corsOptions = {
 
 const app = express()
 
-
 app.use((req, res, next) => {
   console.log('DEBUG', req.method, req.url, 'Origin:', req.headers.origin)
   next()
 })
-
 
 app.use(cors(corsOptions))
 app.options('*', cors(corsOptions))

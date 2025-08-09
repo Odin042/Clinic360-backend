@@ -1,41 +1,19 @@
 import type { RequestHandler } from 'express'
 import pool from '../config/db'
-import admin from '../config/firebaseAdmin'
+import getDoctorIdFromRequest from '../helpers/auth/getDoctorIdFromRequest'
+import { toHttpError } from '../helpers/httpError'
 
 interface RecordPayload {
-  note_type?: string          
+  note_type?: string
   content: string
-  attachments?: any           
+  attachments?: any
 }
-
-
-async function getDoctorIdFromRequest(req: any) {
-  const authHeader = req.headers.authorization
-  if (!authHeader) throw { status: 401, msg: 'Token não fornecido' }
-
-  const token = authHeader.split(' ')[1]
-  const { email } = await admin.auth().verifyIdToken(token)
-  if (!email) throw { status: 400, msg: 'Token não contém e-mail' }
-
-  const userRes = await pool.query('SELECT * FROM users WHERE email = $1', [email])
-  if (!userRes.rowCount) throw { status: 404, msg: 'Usuário não encontrado' }
-
-  const user = userRes.rows[0]
-  if (user.type !== 'Doctor') throw { status: 403, msg: 'Apenas médicos podem acessar prontuários' }
-
-  const docRes = await pool.query('SELECT id FROM doctor WHERE user_id = $1', [user.id])
-  if (!docRes.rowCount) throw { status: 404, msg: 'Médico não encontrado' }
-
-  return docRes.rows[0].id as number
-}
-
 
 export const createRecord: RequestHandler = async (req, res) => {
   try {
     const doctorId = await getDoctorIdFromRequest(req)
     const patientId = Number(req.params.id)
 
-  
     const patRes = await pool.query(
       'SELECT 1 FROM patient WHERE id = $1 AND doctor_id = $2',
       [patientId, doctorId]
@@ -57,12 +35,12 @@ export const createRecord: RequestHandler = async (req, res) => {
     )
 
     res.status(201).json(insert.rows[0])
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(err)
-    res.status(err.status || 500).json({ error: err.msg || 'Erro ao criar registro' })
+    const { status, message } = toHttpError(err, 'Erro ao criar registro')
+    res.status(status).json({ error: message })
   }
 }
-
 
 export const listRecords: RequestHandler = async (req, res) => {
   try {
@@ -86,8 +64,9 @@ export const listRecords: RequestHandler = async (req, res) => {
     )
 
     res.status(200).json(records.rows)
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(err)
-    res.status(err.status || 500).json({ error: err.msg || 'Erro ao listar prontuário' })
+    const { status, message } = toHttpError(err, 'Erro ao listar prontuário')
+    res.status(status).json({ error: message })
   }
 }

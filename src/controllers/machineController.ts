@@ -1,5 +1,7 @@
 import type { RequestHandler } from 'express'
 import pool from '../config/db'
+import type { AuthRequest } from '../middlewares/auth'
+import { toHttpError } from '../helpers/httpError'
 
 export const createMachine: RequestHandler = async (req, res) => {
   const {
@@ -11,16 +13,16 @@ export const createMachine: RequestHandler = async (req, res) => {
     machine_value,
     description,
     acquisition_date,
-    is_active,
-    user_id
+    is_active
   } = req.body
+  const userId = (req as AuthRequest).userId
 
   if (
     !name || !brand || !category ||
     quantity === undefined ||
     cost_per_session === undefined ||
     machine_value === undefined ||
-    !user_id
+    !userId
   ) {
     return res.status(400).json({ error: 'Todos os campos obrigatórios devem ser preenchidos' })
   }
@@ -28,19 +30,20 @@ export const createMachine: RequestHandler = async (req, res) => {
   try {
     const result = await pool.query(
       'INSERT INTO machines (name, brand, category, quantity, cost_per_session, machine_value, description, acquisition_date, is_active, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
-      [name, brand, category, quantity, cost_per_session, machine_value, description, acquisition_date, is_active, user_id]
+      [name, brand, category, quantity, cost_per_session, machine_value, description, acquisition_date, is_active, userId]
     )
     res.status(201).json(result.rows[0])
-  } catch {
-    res.status(500).json({ error: 'Erro ao criar máquina' })
+  } catch (err: unknown) {
+    const { status, message } = toHttpError(err, 'Erro ao criar máquina')
+    res.status(status).json({ error: message })
   }
 }
 
 export const listMachines: RequestHandler = async (req, res) => {
-  const userId = req.query.user_id
+  const userId = (req as AuthRequest).userId
 
   if (!userId) {
-    return res.status(400).json({ error: 'Parâmetro user_id é obrigatório' })
+    return res.status(400).json({ error: 'Usuário não autenticado' })
   }
 
   try {
@@ -49,8 +52,9 @@ export const listMachines: RequestHandler = async (req, res) => {
       [userId]
     )
     res.json(result.rows)
-  } catch {
-    res.status(500).json({ error: 'Erro ao listar máquinas' })
+  } catch (err: unknown) {
+    const { status, message } = toHttpError(err, 'Erro ao listar máquinas')
+    res.status(status).json({ error: message })
   }
 }
 
@@ -77,8 +81,9 @@ export const updateMachine: RequestHandler = async (req, res) => {
       return res.status(404).json({ error: 'Máquina não encontrada' })
     }
     res.json(result.rows[0])
-  } catch {
-    res.status(500).json({ error: 'Erro ao atualizar máquina' })
+  } catch (err: unknown) {
+    const { status, message } = toHttpError(err, 'Erro ao atualizar máquina')
+    res.status(status).json({ error: message })
   }
 }
 
@@ -91,7 +96,8 @@ export const deleteMachine: RequestHandler = async (req, res) => {
       return res.status(404).json({ error: 'Máquina não encontrada' })
     }
     res.json({ message: 'Máquina excluída com sucesso' })
-  } catch {
-    res.status(500).json({ error: 'Erro ao excluir máquina' })
+  } catch (err: unknown) {
+    const { status, message } = toHttpError(err, 'Erro ao excluir máquina')
+    res.status(status).json({ error: message })
   }
 }

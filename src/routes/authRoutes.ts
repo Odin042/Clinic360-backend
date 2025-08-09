@@ -11,6 +11,7 @@ import { createMaterial, deleteMaterial, listMaterials, updateMaterial } from '.
 import { createMachine, listMachines, updateMachine, deleteMachine } from '../controllers/machineController'
 import { createPrescription, listPrescriptions, updatePrescription, deletePrescription } from '../controllers/prescriptionsController'
 import { createExam, listExams } from '../controllers/examsController'
+import { authenticate } from '../middlewares/auth'
 
 const upload = multer({ storage: multer.memoryStorage() })
 
@@ -34,20 +35,20 @@ router.delete('/appointments/:id', deleteAppointment)
 router.post('/patient/:id/anamnesis', createAnamnesis)
 router.get('/patient/:id/anamnesis', listAnamnesis)
 
-router.post('/materials', createMaterial)
-router.get('/materials/list', listMaterials)
-router.put('/materials/:id', updateMaterial)
-router.delete('/materials/:id', deleteMaterial)
+router.post('/materials', authenticate, createMaterial)
+router.get('/materials/list', authenticate, listMaterials)
+router.put('/materials/:id', authenticate, updateMaterial)
+router.delete('/materials/:id', authenticate, deleteMaterial)
 
-router.post('/machines', createMachine)
-router.get('/machines/list', listMachines)
-router.put('/machines/:id', updateMachine)
-router.delete('/machines/:id', deleteMachine)
+router.post('/machines', authenticate, createMachine)
+router.get('/machines/list', authenticate, listMachines)
+router.put('/machines/:id', authenticate, updateMachine)
+router.delete('/machines/:id', authenticate, deleteMachine)
 
-router.post('/prescriptions', createPrescription)
-router.get('/prescriptions/list', listPrescriptions)
-router.put('/prescriptions/:id', updatePrescription)
-router.delete('/prescriptions/:id', deletePrescription)
+router.post('/prescriptions', authenticate, createPrescription)
+router.get('/prescriptions/list', authenticate, listPrescriptions)
+router.put('/prescriptions/:id', authenticate, updatePrescription)
+router.delete('/prescriptions/:id', authenticate, deletePrescription)
 
 router.post('/patient/:id/exams', upload.single('file'), createExam)
 router.get('/patient/:id/exams/list', listExams)
