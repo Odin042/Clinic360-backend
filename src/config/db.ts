@@ -1,13 +1,14 @@
 import { Pool } from 'pg'
-import { DATABASE_URL, DB_SSL, DB_REJECT_UNAUTHORIZED } from './env'
+import dotenv from 'dotenv'
 
-const ssl = DB_SSL === 'false'
-  ? false
-  : { rejectUnauthorized: DB_REJECT_UNAUTHORIZED !== 'false' }
+dotenv.config()
 
 const pool = new Pool({
-  connectionString: DATABASE_URL,
-  ssl
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
 })
 
-export default pool
+
+export default pool;
