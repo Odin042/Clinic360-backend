@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import router from './routes/authRoutes'
+import pool from './config/db'
 
 dotenv.config()
 
@@ -55,6 +56,27 @@ app.get('/healthz', (_req, res) => res.status(200).send('ok'))
 app.use(express.json())
 
 app.use('/', router)
+
+app.get('/debug/dbinfo', async (_req, res) => {
+  const r = await pool.query(`
+    select current_database() as db,
+           current_user as "user",
+           inet_server_addr()::text as host,
+           inet_server_port() as port,
+           show_config_by_name('search_path') as search_path
+  `)
+  res.json(r.rows[0])
+})
+
+app.get('/debug/materials-smoke', async (_req, res) => {
+  try {
+    const r = await pool.query('select id, name from public.materials order by id desc limit 1')
+    res.json({ ok: true, sample: r.rows[0] || null })
+  } catch (err: any) {
+    console.error('MATERIALS_SMOKE_ERROR', { message: err?.message, code: err?.code, detail: err?.detail })
+    res.status(500).json({ ok: false, code: err?.code, message: err?.message })
+  }
+})
 
 app.use((req, res) => {
   console.warn('404', req.method, req.originalUrl)
