@@ -8,13 +8,26 @@ dotenv.config()
 const { FRONT_URL, FRONT_V2_URL, FRONT_PRD, PORT } = process.env
 
 const whitelist = [FRONT_URL, FRONT_V2_URL, FRONT_PRD].filter(Boolean)
-const allowedRegex = [/\.vercel\.app$/]
+
+const allowedRegex = [
+  /\.vercel\.app$/,
+  /^https?:\/\/localhost(:\d+)?$/,
+  /^https?:\/\/127\.0\.0\.1(:\d+)?$/
+]
+
+const isAllowedOrigin = (origin?: string) => {
+  if (!origin) return true
+  if (whitelist.includes(origin)) return true
+  try {
+    const url = new URL(origin)
+    if (allowedRegex.some(r => r.test(origin) || r.test(url.hostname))) return true
+  } catch {}
+  return false
+}
 
 const corsOptions: cors.CorsOptions = {
   origin(origin, cb) {
-    if (!origin) return cb(null, true)
-    const ok = whitelist.includes(origin) || allowedRegex.some(r => r.test(origin))
-    return ok ? cb(null, true) : cb(new Error(`Not allowed by CORS: <${origin}>`))
+    isAllowedOrigin(origin) ? cb(null, true) : cb(new Error(`Not allowed by CORS: <${origin}>`))
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -48,6 +61,6 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not Found', path: req.originalUrl })
 })
 
-app.listen(Number(PORT) || 3000, '0.0.0.0', () => {
-  console.log(`up on ${Number(PORT) || 3000}`)
+app.listen(Number(PORT) || 5000, '0.0.0.0', () => {
+  console.log(`up on ${Number(PORT) || 5000}`)
 })
