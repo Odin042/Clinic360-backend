@@ -7,32 +7,48 @@ dotenv.config()
 
 const { FRONT_URL, FRONT_V2_URL, FRONT_PRD, PORT } = process.env
 
-const whitelist = [FRONT_URL, FRONT_V2_URL, FRONT_PRD].filter(Boolean)
+const normalize = (u?: string) => {
+  if (!u) return ''
+  try { return new URL(u).origin } catch { return String(u).replace(/\/+$/, '') }
+}
 
-const corsOptions = {
-  origin: (origin, callback) => {
-    console.log('CORS Origin:', origin)
-    if (!origin || whitelist.includes(origin)) {
-      callback(null, true)
-    } else {
-      console.warn('Request not allowed by CORS:', origin)
-      callback(new Error(`Not allowed by CORS: <${origin}>`))
-    }
+const whitelist = [FRONT_URL, FRONT_V2_URL, FRONT_PRD].filter(Boolean).map(normalize)
+
+const allowedRegex = [
+  /^https?:\/\/[^/]*clinic360pro[^/]*\.vercel\.app$/i,
+  /^https?:\/\/localhost(:\d+)?$/i,
+  /^https?:\/\/127\.0\.0\.1(:\d+)?$/i
+]
+
+const isAllowedOrigin = (origin?: string) => {
+  if (!origin) return true
+  const o = normalize(origin)
+  if (whitelist.includes(o)) return true
+  try {
+    const url = new URL(origin)
+    return allowedRegex.some(r => r.test(origin) || r.test(url.hostname))
+  } catch {
+    return false
+  }
+}
+
+const corsOptions: cors.CorsOptions = {
+  origin(origin, cb) {
+    isAllowedOrigin(origin) ? cb(null, true) : cb(new Error(`Not allowed by CORS: <${origin}>`))
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  optionsSuccessStatus: 204
 }
 
 const app = express()
 
+console.log('CORS whitelist:', whitelist)
 
-app.use((req, res, next) => {
-  console.log('DEBUG', req.method, req.url, 'Origin:', req.headers.origin)
+app.use((req, _res, next) => {
+  console.log('DEBUG', req.method, req.url, 'Origin:', req.headers.origin, 'ACRH:', req.headers['access-control-request-headers'])
   next()
 })
-
 
 app.use(cors(corsOptions))
 app.options('*', cors(corsOptions))

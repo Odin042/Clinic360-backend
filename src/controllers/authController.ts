@@ -1,85 +1,91 @@
-import bcryptjs from 'bcryptjs';
-import type { NextFunction, Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import { createUser, findUserByEmail } from '../models/user';
-import dotenv from 'dotenv';
+import type { RequestHandler } from 'express'
+import bcrypt from 'bcryptjs'
+import pool from '../config/db'
+import admin from '../config/firebaseAdmin'
 
-dotenv.config();
+export const register: RequestHandler = async (req, res) => {
+  const {
+    username,
+    email,
+    password,
+    speciality,
+    cpf_cnpj,
+    gender,
+    register: reg,
+    uf,
+    phone
+  } = req.body || {}
 
-export const register =  async (req: Request, res: Response): Promise<void> => {
+  if (!username || !email || !password || !cpf_cnpj || !gender || !phone) {
+    res.status(400).json({ error: 'Campos obrigatórios ausentes' })
+    return
+  }
+
+  const client = await pool.connect()
+  let fbUid: string | null = null
+
   try {
-    const {
-      username,
+    await client.query('BEGIN')
+
+    const dup = await client.query('select 1 from users where email = $1', [email])
+    if (dup.rowCount) {
+      await client.query('ROLLBACK')
+      res.status(409).json({ error: 'E-mail já cadastrado' })
+      return
+    }
+
+    const hash = await bcrypt.hash(password, 10)
+
+    const p = await client.query('select id from persons where cpf_cnpj = $1', [cpf_cnpj])
+    const personId = p.rowCount
+      ? p.rows[0].id
+      : (await client.query(
+          'insert into persons (name, cpf_cnpj, phone, gender, type, status) values ($1,$2,$3,$4,$5,$6) returning id',
+          [username, cpf_cnpj, phone, gender, 'person', true]
+        )).rows[0].id
+
+    const userType = speciality ? 'Doctor' : 'User'
+    const u = await client.query(
+      `insert into users
+       (username, email, password, speciality, cpf_cnpj, gender, register, uf, phone, type, person_id)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+       returning id`,
+      [username, email, hash, speciality || null, cpf_cnpj, gender, reg || '', uf || '', phone, userType, personId]
+    )
+    const userId = u.rows[0].id
+
+    if (userType === 'Doctor') {
+      await client.query(
+        `insert into doctor (name, register, uf, specialty_id, status, user_id)
+         values ($1,$2,$3,$4,$5,$6)`,
+        [username, reg || '', uf || '', speciality, true, userId]
+      )
+    }
+
+    const fb = await admin.auth().createUser({
       email,
       password,
-      speciality,
-      cpf_cnpj,
-      gender,
-      register,
-      uf,
-      phone,
-    } = req.body
+      displayName: username
+    })
+    fbUid = fb.uid
 
-    const passwordHash = await bcryptjs.hash(password, 10)
-    const newUser = await createUser(
-      username,
-      email,
-      passwordHash,
-      speciality,
-      cpf_cnpj,
-      gender,
-      register,
-      uf,
-      phone
-    )
+    await client.query('update users set firebase_uid = $1 where id = $2', [fbUid, userId])
 
-    res.status(201).json({ message: "Usuário criado com sucesso", user: newUser })
-  } catch (error) {
-    res.status(500).json({ error: "Erro ao criar usuário." })
-  }
-}
-
-
-export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  try {
-    const { email, password } = req.body;
-
-    if (!password) {
-      res.status(400).json({ message: 'Senha é obrigatória.' });
-      return;
+    await client.query('COMMIT')
+    res.status(201).json({ id: userId })
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {})
+    if (fbUid) {
+      try { await admin.auth().deleteUser(fbUid) } catch {}
     }
-
-    const user = await findUserByEmail(email);
-
-    if (!user) {
-      res.status(400).json({ message: "Credenciais inválidas." });
-      return;
+    const msg = String((err as any)?.message || err)
+    if (/duplicate key value/i.test(msg)) {
+      res.status(409).json({ error: 'E-mail ou CPF/CNPJ já cadastrado' })
+      return
     }
-
-
-    if (!user.password) {
-      res.status(500).json({ message: "Erro interno no servidor. (Senha ausente)" });
-      return;
-    }
-
-    const isPasswordValid = await bcryptjs.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      res.status(400).json({ message: 'Credenciais inválidas.' });
-      return;
-    }
-
-    if (!process.env.JWT_SECRET) {
-      throw new Error("JWT_SECRET não está definido no .env");
-    }
-    
-
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: '1h',
-    });
-
-    res.json({ message: 'Login realizado com sucesso!', token });
-  } catch (error) {
-    res.status(500).json({ message: 'Erro interno no servidor.', error: error.message });
+    console.error('REGISTER_ERROR', msg)
+    res.status(400).json({ error: 'Não foi possível concluir o cadastro' })
+  } finally {
+    client.release()
   }
 }
