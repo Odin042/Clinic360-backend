@@ -25,16 +25,16 @@ export const createMaterial: RequestHandler = async (req, res) => {
 
 export const listMaterials: RequestHandler = async (_req, res) => {
   try {
+    console.log('Attempting to list materials...')
     const result = await pool.query('select * from public.materials order by id desc')
+    console.log(`Found ${result.rows.length} materials`)
     res.json(result.rows)
-  } catch (err) {
+  } catch (err: any) {
     console.error('LIST_MATERIALS_ERROR', {
-      message: err?.message,
-      code: err?.code,
-      detail: err?.detail,
-      schema: err?.schema,
-      table: err?.table,
-      constraint: err?.constraint
+      message: err.message,
+      code: err.code,
+      detail: err.detail,
+      stack: err.stack
     })
     res.status(500).json({ error: 'Erro ao listar materiais' })
   }
