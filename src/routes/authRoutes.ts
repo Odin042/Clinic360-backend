@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import multer from 'multer'
 
-import { register, login } from '../controllers/authController'
+import { register } from '../controllers/authController'
 import { getUserByToken } from '../controllers/userController'
 import { createPatient, getPatientById, getPatients } from '../controllers/patientController'
 import { createAppointment, getAppointments, updateAppointment, deleteAppointment } from '../controllers/appointmentsController'
@@ -17,7 +17,6 @@ const upload = multer({ storage: multer.memoryStorage() })
 const router = Router()
 
 router.post('/register', register)
-router.post('/login', login)
 router.get('/user', getUserByToken)
 
 router.post('/patient', createPatient)

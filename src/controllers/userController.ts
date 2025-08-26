@@ -2,47 +2,62 @@ import type { RequestHandler } from "express"
 import pool from "../config/db"
 import admin from "../config/firebaseAdmin"
 
-export const getUserByToken: RequestHandler = async (req, res, next) => {
+export const getUserByToken: RequestHandler = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization
-    if (!authHeader) {
-      res.status(401).json({ error: "Token não fornecido" })
+    const hdr = req.headers.authorization || ""
+    const parts = hdr.split(" ")
+    if (parts.length !== 2 || parts[0] !== "Bearer") {
+      res.status(401).json({ error: "Authorization inválido. Formato esperado: Bearer <token>" })
       return
     }
+    const token = parts[1]
 
-    const token = authHeader.split(" ")[1]
-    const decodedToken = await admin.auth().verifyIdToken(token)
-    const email = decodedToken.email
-
+    const decoded = await admin.auth().verifyIdToken(token)
+    const email = decoded.email
     if (!email) {
       res.status(400).json({ error: "Token não contém e-mail." })
       return
     }
 
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email])
-    if (result.rows.length === 0) {
+    const { rows } = await pool.query("select * from users where email = $1", [email])
+    if (!rows.length) {
       res.status(404).json({ error: "Usuário não encontrado" })
       return
     }
 
-    const user = result.rows[0]
+    const user = rows[0]
     delete user.password
 
+    const dr = await pool.query("select id from doctor where user_id = $1", [user.id])
+    const doctor_id = dr.rows[0]?.id ?? null
 
-    const doctorResult = await pool.query(
-      "SELECT id FROM doctor WHERE user_id = $1",
-      [user.id]
-    )
-    const doctor_id = doctorResult.rows.length > 0 ? doctorResult.rows[0].id : null
-
-    res.json({
-      ...user,
-      doctor_id, 
-      is_doctor: !!doctor_id,
-    })
-  } catch (error) {
-    console.error(error)
+    res.json({ ...user, doctor_id, is_doctor: !!doctor_id })
+  } catch (err: any) {
+    const msg = String(err?.message || err)
+    if (/self signed certificate/i.test(msg)) {
+      console.error("TLS/CA:", msg)
+      res.status(502).json({ error: "Falha TLS ao validar token (CA não confiável)." })
+      return
+    }
+    if (err?.code) {
+      console.error("FirebaseAuthError:", err.code, msg)
+      switch (err.code) {
+        case "auth/argument-error":
+          res.status(400).json({ error: "Token ausente ou malformado." })
+          return
+        case "auth/id-token-expired":
+          res.status(401).json({ error: "Token expirado." })
+          return
+        case "auth/invalid-id-token":
+          res.status(401).json({ error: "ID Token inválido." })
+          return
+        case "auth/tenant-id-mismatch":
+        case "auth/project-id-mismatch":
+          res.status(401).json({ error: "Token de outro projeto Firebase." })
+          return
+      }
+    }
+    console.error("Auth verify error:", msg)
     res.status(401).json({ error: "Token inválido ou erro na validação." })
   }
 }
-
