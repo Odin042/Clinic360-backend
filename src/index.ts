@@ -15,6 +15,7 @@ const normalize = (u?: string) => {
 const whitelist = [FRONT_URL, FRONT_V2_URL, FRONT_PRD].filter(Boolean).map(normalize)
 
 const allowedRegex = [
+  /^https?:\/\/([a-z0-9-]+\.)*clinic360pro\.com\.br$/i,
   /^https?:\/\/[^/]*clinic360pro[^/]*\.vercel\.app$/i,
   /^https?:\/\/localhost(:\d+)?$/i,
   /^https?:\/\/127\.0\.0\.1(:\d+)?$/i
@@ -34,24 +35,33 @@ const isAllowedOrigin = (origin?: string) => {
 
 const corsOptions: cors.CorsOptions = {
   origin(origin, cb) {
-    isAllowedOrigin(origin) ? cb(null, true) : cb(new Error(`Not allowed by CORS: <${origin}>`))
+    cb(null, !origin || isAllowedOrigin(origin))
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-No-Auth'],
+  exposedHeaders: ['X-Request-Id'],
   optionsSuccessStatus: 204
 }
 
 const app = express()
 
-console.log('CORS whitelist:', whitelist)
-
-app.use((req, _res, next) => {
-  console.log('DEBUG', req.method, req.url, 'Origin:', req.headers.origin, 'ACRH:', req.headers['access-control-request-headers'])
-  next()
-})
-
 app.use(cors(corsOptions))
 app.options('*', cors(corsOptions))
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin as string | undefined
+  if (!origin || isAllowedOrigin(origin)) {
+    if (origin) res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Access-Control-Allow-Credentials', 'true')
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS')
+    const reqHeaders = req.headers['access-control-request-headers']
+    res.setHeader('Access-Control-Allow-Headers', typeof reqHeaders === 'string' && reqHeaders.length ? reqHeaders : 'Content-Type, Authorization, X-No-Auth')
+    res.setHeader('Vary', 'Origin, Access-Control-Request-Headers')
+    if (req.method === 'OPTIONS') return res.sendStatus(204)
+  }
+  next()
+})
 
 app.use(express.json())
 app.use(authRoutes)
