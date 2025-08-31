@@ -33,13 +33,21 @@ const isAllowedOrigin = (origin?: string) => {
   }
 }
 
+const ALLOWED_HEADERS_FALLBACK = [
+  'Content-Type',
+  'Authorization',
+  'X-No-Auth',
+  'X-User-Id',
+  'X-Request-Id'
+]
+
 const corsOptions: cors.CorsOptions = {
   origin(origin, cb) {
     cb(null, !origin || isAllowedOrigin(origin))
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-No-Auth'],
+  allowedHeaders: ALLOWED_HEADERS_FALLBACK,
   exposedHeaders: ['X-Request-Id'],
   optionsSuccessStatus: 204
 }
@@ -51,12 +59,17 @@ app.options('*', cors(corsOptions))
 
 app.use((req, res, next) => {
   const origin = req.headers.origin as string | undefined
-  if (!origin || isAllowedOrigin(origin)) {
-    if (origin) res.setHeader('Access-Control-Allow-Origin', origin)
+  if (origin && isAllowedOrigin(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', normalize(origin))
     res.setHeader('Access-Control-Allow-Credentials', 'true')
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS')
     const reqHeaders = req.headers['access-control-request-headers']
-    res.setHeader('Access-Control-Allow-Headers', typeof reqHeaders === 'string' && reqHeaders.length ? reqHeaders : 'Content-Type, Authorization, X-No-Auth')
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      typeof reqHeaders === 'string' && reqHeaders.length
+        ? reqHeaders
+        : ALLOWED_HEADERS_FALLBACK.join(', ')
+    )
     res.setHeader('Vary', 'Origin, Access-Control-Request-Headers')
     if (req.method === 'OPTIONS') return res.sendStatus(204)
   }

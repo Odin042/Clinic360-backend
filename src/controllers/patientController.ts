@@ -1,6 +1,6 @@
-import type { RequestHandler } from "express"
-import pool from "../config/db"
-import admin from "../config/firebaseAdmin"
+import type { RequestHandler } from 'express'
+import pool from '../config/db'
+import admin from '../config/firebaseAdmin'
 
 interface Patient {
   name: string
@@ -22,43 +22,33 @@ export const createPatient: RequestHandler = async (req, res) => {
   try {
     const authHeader = req.headers.authorization
     if (!authHeader) {
-      res.status(401).json({ error: "Token não fornecido" })
+      res.status(401).json({ error: 'Token não fornecido' })
       return
     }
 
-    const token = authHeader.split(" ")[1]
+    const token = authHeader.split(' ')[1]
     const decodedToken = await admin.auth().verifyIdToken(token)
     const email = decodedToken.email
-
     if (!email) {
-      res.status(400).json({ error: "Token não contém e-mail." })
+      res.status(400).json({ error: 'Token não contém e-mail.' })
       return
     }
 
-    const userResult = await pool.query(
-      "SELECT * FROM users WHERE email = $1",
-      [email]
-    )
-
+    const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email])
     if (userResult.rows.length === 0) {
-      res.status(404).json({ error: "Usuário não encontrado" })
+      res.status(404).json({ error: 'Usuário não encontrado' })
       return
     }
 
     const user = userResult.rows[0]
-
-    if (user.type !== "Doctor") {
-      res.status(403).json({ error: "Apenas médicos podem criar pacientes." })
+    if (user.type !== 'Doctor') {
+      res.status(403).json({ error: 'Apenas médicos podem criar pacientes.' })
       return
     }
 
-    const doctorResult = await pool.query(
-      "SELECT id FROM doctor WHERE user_id = $1",
-      [user.id]
-    )
-
+    const doctorResult = await pool.query('SELECT id FROM doctor WHERE user_id = $1', [user.id])
     if (doctorResult.rows.length === 0) {
-      res.status(404).json({ error: "Médico não encontrado na tabela doctor" })
+      res.status(404).json({ error: 'Médico não encontrado na tabela doctor' })
       return
     }
 
@@ -80,6 +70,8 @@ export const createPatient: RequestHandler = async (req, res) => {
       height
     } = req.body as Patient
 
+    const cpfClean = (cpf_cnpj || '').replace(/\D/g, '')
+
     const result = await pool.query(
       `
       INSERT INTO patient
@@ -97,7 +89,7 @@ export const createPatient: RequestHandler = async (req, res) => {
         whatsapp,
         place_of_service,
         occupation,
-        cpf_cnpj,
+        cpfClean,
         rg,
         address,
         health_plan,
@@ -110,7 +102,7 @@ export const createPatient: RequestHandler = async (req, res) => {
     res.status(201).json(result.rows[0])
   } catch (error) {
     console.error(error)
-    res.status(500).json({ error: "Erro ao criar paciente." })
+    res.status(500).json({ error: 'Erro ao criar paciente.' })
   }
 }
 
