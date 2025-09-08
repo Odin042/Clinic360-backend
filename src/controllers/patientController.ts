@@ -18,6 +18,8 @@ interface Patient {
   height: string
 }
 
+
+
 export const createPatient: RequestHandler = async (req, res) => {
   try {
     const authHeader = req.headers.authorization
@@ -166,60 +168,42 @@ export const getPatients: RequestHandler = async (req, res) => {
 
 export const getPatientById: RequestHandler = async (req, res) => {
   try {
-    
     const authHeader = req.headers.authorization
-    if (!authHeader) {
-      res.status(401).json({ error: 'Token não fornecido' })
-      return
-    }
+    if (!authHeader) return res.status(401).json({ error: 'Token não fornecido' })
 
     const token = authHeader.split(' ')[1]
     const { email } = await admin.auth().verifyIdToken(token)
-    if (!email) {
-      res.status(400).json({ error: 'Token não contém e-mail' })
-      return
-    }
+    if (!email) return res.status(400).json({ error: 'Token não contém e-mail' })
 
-    
-    const userRes = await pool.query(
-      'SELECT id, type FROM users WHERE email = $1',
-      [email]
-    )
-    if (!userRes.rowCount) {
-      res.status(404).json({ error: 'Usuário não encontrado' })
-      return
-    }
+    const userRes = await pool.query('SELECT id, type FROM users WHERE email = $1', [email])
+    if (!userRes.rowCount) return res.status(404).json({ error: 'Usuário não encontrado' })
     if (userRes.rows[0].type !== 'Doctor') {
-      res.status(403).json({ error: 'Apenas médicos podem acessar pacientes' })
-      return
+      return res.status(403).json({ error: 'Apenas médicos podem acessar pacientes' })
     }
 
-    const docRes = await pool.query(
-      'SELECT id FROM doctor WHERE user_id = $1',
-      [userRes.rows[0].id]
-    )
-    if (!docRes.rowCount) {
-      res.status(404).json({ error: 'Médico não encontrado' })
-      return
-    }
-    const doctorId = docRes.rows[0].id
+    const docRes = await pool.query('SELECT id FROM doctor WHERE user_id = $1', [userRes.rows[0].id])
+    if (!docRes.rowCount) return res.status(404).json({ error: 'Médico não encontrado' })
 
-  
-    const patientId = Number.parseInt(req.params.id, 10)
-    if (Number.isNaN(patientId)) {
-      res.status(400).json({ error: 'Parâmetro id inválido' })
-      return
-    }
+    const patientId = Number(req.params.id)
+    if (!Number.isFinite(patientId)) return res.status(400).json({ error: 'Parâmetro id inválido' })
 
-  
+   
+    const rawDoctorId = docRes.rows[0].id
+    const doctorId =
+      typeof rawDoctorId === 'object'
+        ? Number(rawDoctorId.doctorId ?? rawDoctorId.id)
+        : Number(rawDoctorId)
+
+    if (!Number.isFinite(doctorId)) {
+      return res.status(500).json({ error: 'doctorId inválido (não numérico)' })
+    }
+ 
+
     const patRes = await pool.query(
       'SELECT * FROM patient WHERE id = $1 AND doctor_id = $2',
-      [patientId, doctorId]
+      [patientId, doctorId] 
     )
-    if (!patRes.rowCount) {
-      res.status(404).json({ error: 'Paciente não encontrado' })
-      return
-    }
+    if (!patRes.rowCount) return res.status(404).json({ error: 'Paciente não encontrado' })
 
     res.status(200).json(patRes.rows[0])
   } catch (err: any) {

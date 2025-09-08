@@ -1,43 +1,72 @@
 import type { RequestHandler } from 'express'
 import pool from '../config/db'
+import getAuthIdsFromRequest from '../helpers/auth/getDoctorIdFromRequest'
 
 const sanitize = v => (typeof v === 'string' && v.trim() === '' ? null : v)
 
 export const createPrescription: RequestHandler = async (req, res) => {
-  const {
-    patient_id, doctor_id, title, date,
-    posology_phytotherapy, posology_supplement,
-    posology_medication, notes, items = []
-  } = req.body
-
-  if (!patient_id || !doctor_id || !title || !date)
-    return res.status(400).json({ error: 'Campos obrigatórios: patient_id, doctor_id, title, date' })
-
   const client = await pool.connect()
   try {
+    const { doctorId } = await getAuthIdsFromRequest(req)
+    const {
+      patient_id,
+      title,
+      date,
+      posology_phytotherapy,
+      posology_supplement,
+      posology_medication,
+      notes,
+      items = []
+    } = req.body
+
+    if (!patient_id || !title || !date) {
+      res.status(400).json({ error: 'Campos obrigatórios: patient_id, title, date' })
+      return
+    }
+
+    const patientId = Number(patient_id)
+    if (!Number.isFinite(patientId)) {
+      res.status(400).json({ error: 'patient_id inválido' })
+      return
+    }
+
+    const own = await client.query(
+      'select 1 from patient where id = $1 and doctor_id = $2',
+      [patientId, Number(doctorId)]
+    )
+    if (!own.rowCount) {
+      res.status(404).json({ error: 'Paciente não encontrado' })
+      return
+    }
+
     await client.query('BEGIN')
 
     const ins = await client.query(
-      `INSERT INTO prescriptions
+      `insert into prescriptions
          (patient_id, doctor_id, title, date,
           posology_phytotherapy, posology_supplement,
           posology_medication, notes)
-       VALUES ($1,$2,$3,$4::date,$5,$6,$7,$8)
-       RETURNING id`,
+       values ($1,$2,$3,$4::date,$5,$6,$7,$8)
+       returning id`,
       [
-        patient_id, doctor_id, title, date.split('T')[0],
-        sanitize(posology_phytotherapy), sanitize(posology_supplement),
-        sanitize(posology_medication), sanitize(notes)
+        patientId,
+        Number(doctorId),
+        title,
+        String(date).split('T')[0],
+        sanitize(posology_phytotherapy),
+        sanitize(posology_supplement),
+        sanitize(posology_medication),
+        sanitize(notes)
       ]
     )
     const pid = ins.rows[0].id
 
-    for (const it of items.filter(i => i?.type && i.name)) {
+    for (const it of Array.isArray(items) ? items.filter(i => i?.type && i.name) : []) {
       const { type, name, dosage, frequency, duration, notes: n } = it
       await client.query(
-        `INSERT INTO prescription_items
+        `insert into prescription_items
            (prescription_id, type, name, dosage, frequency, duration, notes)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+         values ($1,$2,$3,$4,$5,$6,$7)`,
         [pid, type, name, dosage, frequency, duration, n]
       )
     }
@@ -53,19 +82,34 @@ export const createPrescription: RequestHandler = async (req, res) => {
 }
 
 export const listPrescriptions: RequestHandler = async (req, res) => {
-  const { patient_id } = req.query   
   try {
+    const { doctorId } = await getAuthIdsFromRequest(req)
+    const patientId = Number(req.query.patient_id)
+    if (!Number.isFinite(patientId)) {
+      res.status(400).json({ error: 'patient_id inválido' })
+      return
+    }
+
+    const own = await pool.query(
+      'select 1 from patient where id = $1 and doctor_id = $2',
+      [patientId, Number(doctorId)]
+    )
+    if (!own.rowCount) {
+      res.status(404).json({ error: 'Paciente não encontrado' })
+      return
+    }
+
     const result = await pool.query(
       `
-      SELECT p.*,
-             COALESCE(json_agg(pi.*) FILTER (WHERE pi.id IS NOT NULL), '[]') AS items
-      FROM   prescriptions p
-      LEFT JOIN prescription_items pi ON p.id = pi.prescription_id
-      ${patient_id ? 'WHERE p.patient_id = $1' : ''}
-      GROUP BY p.id
-      ORDER BY p.id DESC
+      select p.*,
+             coalesce(json_agg(pi.*) filter (where pi.id is not null), '[]') as items
+      from prescriptions p
+      left join prescription_items pi on p.id = pi.prescription_id
+      where p.patient_id = $1 and p.doctor_id = $2
+      group by p.id
+      order by p.id desc
       `,
-      patient_id ? [patient_id] : []
+      [patientId, Number(doctorId)]
     )
     res.json(result.rows)
   } catch {
@@ -74,74 +118,134 @@ export const listPrescriptions: RequestHandler = async (req, res) => {
 }
 
 export const updatePrescription: RequestHandler = async (req, res) => {
-  const { id } = req.params
-  const {
-    title,
-    date,
-    posology_phytotherapy,
-    posology_supplement,
-    posology_medication,
-    notes,
-    items
-  } = req.body
-
+  const client = await pool.connect()
   try {
-    const result = await pool.query(
-      `UPDATE prescriptions
-         SET title = $1,
-             date = $2,
-             posology_phytotherapy = $3,
-             posology_supplement = $4,
-             posology_medication = $5,
-             notes = $6,
-             updated_at = NOW()
-       WHERE id = $7
-       RETURNING *`,
-      [
-        title,
-        date,
-        sanitize(posology_phytotherapy),
-        sanitize(posology_supplement),
-        sanitize(posology_medication),
-        sanitize(notes),
-        id
-      ]
-    )
+    const { doctorId } = await getAuthIdsFromRequest(req)
+    const pid = Number(req.params.id)
+    if (!Number.isFinite(pid)) {
+      res.status(400).json({ error: 'ID inválido' })
+      return
+    }
 
-    if (result.rowCount === 0)
-      return res.status(404).json({ error: 'Prescrição não encontrada' })
+    const own = await client.query(
+      'select 1 from prescriptions where id = $1 and doctor_id = $2',
+      [pid, Number(doctorId)]
+    )
+    if (!own.rowCount) {
+      res.status(404).json({ error: 'Prescrição não encontrada' })
+      return
+    }
+
+    const {
+      title,
+      date,
+      posology_phytotherapy,
+      posology_supplement,
+      posology_medication,
+      notes,
+      items
+    } = req.body
+
+    const updates: string[] = []
+    const values: any[] = []
+    let i = 1
+
+    if (title !== undefined) { updates.push(`title = $${i++}`); values.push(title) }
+    if (date !== undefined)  { updates.push(`date = $${i++}`); values.push(String(date).split('T')[0]) }
+    if (posology_phytotherapy !== undefined) { updates.push(`posology_phytotherapy = $${i++}`); values.push(sanitize(posology_phytotherapy)) }
+    if (posology_supplement !== undefined)   { updates.push(`posology_supplement = $${i++}`); values.push(sanitize(posology_supplement)) }
+    if (posology_medication !== undefined)   { updates.push(`posology_medication = $${i++}`); values.push(sanitize(posology_medication)) }
+    if (notes !== undefined)                 { updates.push(`notes = $${i++}`); values.push(sanitize(notes)) }
+
+    if (!updates.length && !Array.isArray(items)) {
+      res.status(400).json({ error: 'Nada para atualizar' })
+      return
+    }
+
+    await client.query('BEGIN')
+
+    if (updates.length) {
+      updates.push('updated_at = now()')
+      values.push(pid)
+      values.push(Number(doctorId))
+      await client.query(
+        `
+        update prescriptions
+           set ${updates.join(', ')}
+         where id = $${i++}
+           and doctor_id = $${i}
+        `,
+        values
+      )
+    }
 
     if (Array.isArray(items)) {
-      await pool.query(`DELETE FROM prescription_items WHERE prescription_id = $1`, [id])
-      for (const i of items) {
-        const { type, name, dosage, frequency, duration, notes: n } = i
-        await pool.query(
-          `INSERT INTO prescription_items
+      await client.query(`delete from prescription_items where prescription_id = $1`, [pid])
+      for (const it of items) {
+        const { type, name, dosage, frequency, duration, notes: n } = it
+        await client.query(
+          `insert into prescription_items
              (prescription_id, type, name, dosage, frequency, duration, notes)
-           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-          [id, type, name, dosage, frequency, duration, n]
+           values ($1,$2,$3,$4,$5,$6,$7)`,
+          [pid, type, name, dosage, frequency, duration, n]
         )
       }
     }
 
-    res.json(result.rows[0])
+    await client.query('COMMIT')
+
+    const refreshed = await client.query(
+      `
+      select p.*,
+             coalesce(json_agg(pi.*) filter (where pi.id is not null), '[]') as items
+      from prescriptions p
+      left join prescription_items pi on p.id = pi.prescription_id
+      where p.id = $1 and p.doctor_id = $2
+      group by p.id
+      `,
+      [pid, Number(doctorId)]
+    )
+
+    res.json(refreshed.rows[0])
   } catch {
+    await client.query('ROLLBACK')
     res.status(500).json({ error: 'Erro ao atualizar prescrição' })
+  } finally {
+    client.release()
   }
 }
 
 export const deletePrescription: RequestHandler = async (req, res) => {
-  const { id } = req.params
-
+  const client = await pool.connect()
   try {
-    await pool.query(`DELETE FROM prescription_items WHERE prescription_id = $1`, [id])
-    const result = await pool.query(`DELETE FROM prescriptions WHERE id = $1`, [id])
+    const { doctorId } = await getAuthIdsFromRequest(req)
+    const pid = Number(req.params.id)
+    if (!Number.isFinite(pid)) {
+      res.status(400).json({ error: 'ID inválido' })
+      return
+    }
 
-    if (result.rowCount === 0)
-      return res.status(404).json({ error: 'Prescrição não encontrada' })
+    await client.query('BEGIN')
 
+    const own = await client.query(
+      'select 1 from prescriptions where id = $1 and doctor_id = $2',
+      [pid, Number(doctorId)]
+    )
+    if (!own.rowCount) {
+      await client.query('ROLLBACK')
+      res.status(404).json({ error: 'Prescrição não encontrada' })
+      return
+    }
+
+    await client.query(`delete from prescription_items where prescription_id = $1`, [pid])
+    await client.query(`delete from prescriptions where id = $1 and doctor_id = $2`, [pid, Number(doctorId)])
+
+    await client.query('COMMIT')
     res.json({ message: 'Prescrição excluída com sucesso' })
   } catch {
+    await client.query('ROLLBACK')
     res.status(500).json({ error: 'Erro ao excluir prescrição' })
+  } finally {
+    client.release()
   }
 }
