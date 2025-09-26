@@ -25,7 +25,8 @@ type ProcedureBody = {
   machines?: ProcedureMachine[]
   final_price?: number | null
   profit_percent?: number | null
-  attachments: { before_url: string; after_url: string }
+  is_budget?: boolean | null
+  attachments?: { before_url: string; after_url: string } | null
 }
 
 export const listProcedures: RequestHandler = async (req, res) => {
@@ -231,7 +232,8 @@ export const createProcedure: RequestHandler = async (req, res) => {
       machines = [],
       final_price,
       profit_percent,
-      attachments
+      is_budget = false,
+      attachments = null
     } = req.body as ProcedureBody
 
     if (!name || String(name).trim().length < 3) {
@@ -247,7 +249,7 @@ export const createProcedure: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: `A data do procedimento deve ser o dia ${today}.` })
     }
 
-    if (!attachments?.before_url || !attachments?.after_url) {
+    if (!is_budget && (!attachments?.before_url || !attachments?.after_url)) {
       return res.status(400).json({ error: 'Envie as fotos Antes e Depois para continuar.' })
     }
 
@@ -292,11 +294,13 @@ export const createProcedure: RequestHandler = async (req, res) => {
 
     const pid = head.rows[0].id
 
-    await client.query(
-      `insert into public.procedure_attachments (procedure_id, before_url, after_url)
-       values ($1,$2,$3)`,
-      [pid, attachments.before_url, attachments.after_url]
-    )
+    if (!is_budget && attachments?.before_url && attachments?.after_url) {
+      await client.query(
+        `insert into public.procedure_attachments (procedure_id, before_url, after_url)
+         values ($1,$2,$3)`,
+        [pid, attachments.before_url, attachments.after_url]
+      )
+    }
 
     for (const m of normMachines) {
       const hasOrigin = (m.machine_id != null) !== (m.manual_name != null)
@@ -394,7 +398,10 @@ export const createProcedure: RequestHandler = async (req, res) => {
       [pid, userId]
     )
 
-    return res.status(201).json(full.rows[0])
+    return res.status(201).json({
+      ...full.rows[0],
+      is_budget: Boolean(is_budget)
+    })
   } catch (err: any) {
     try { await client.query('rollback') } catch {}
     if (err?.code === '23503') return res.status(400).json({ error: 'FK inválida (material/máquina).' })
