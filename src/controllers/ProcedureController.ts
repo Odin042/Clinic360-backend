@@ -30,6 +30,33 @@ type ProcedureBody = {
   attachments?: { before_url: string | null; after_url: string | null } | null
 }
 
+async function applyStockDelta(
+  client: any,
+  params: { userId: number, materialId: number, qty: number }
+) {
+  const { userId, materialId, qty } = params
+  if (!Number.isFinite(qty) || qty === 0) return
+  if (qty < 0) {
+    const upd = await client.query(
+      `update public.materials
+         set stock = stock + $1
+       where id = $2 and user_id = $3 and stock + $1 >= 0
+       returning stock`,
+      [qty, materialId, userId]
+    )
+    if (!upd.rowCount) {
+      throw Object.assign(new Error('Estoque insuficiente'), { status: 400 })
+    }
+    return
+  }
+  await client.query(
+    `update public.materials
+       set stock = stock + $1
+     where id = $2 and user_id = $3`,
+    [qty, materialId, userId]
+  )
+}
+
 export const listProcedures: RequestHandler = async (req, res) => {
   try {
     const { userId } = await getAuthIdsFromRequest(req)
@@ -212,6 +239,57 @@ export const getDayReport: RequestHandler = async (req, res) => {
   }
 }
 
+export const deleteProcedure: RequestHandler = async (req, res) => {
+  const client = await pool.connect()
+  try {
+    const { userId } = await getAuthIdsFromRequest(req)
+    const id = Number(req.params.id)
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID inválido' })
+
+    await client.query('begin')
+
+    const head = await client.query(
+      'select id, "mode" from public.procedures where id = $1 and user_id = $2 for update',
+      [id, userId]
+    )
+    if (!head.rowCount) {
+      await client.query('rollback')
+      return res.status(404).json({ error: 'Procedimento não encontrado' })
+    }
+
+    const mode: 'BUDGET' | 'DONE' | 'APPLICATION' | null = head.rows[0].mode
+
+    if (mode !== 'BUDGET') {
+      const items = await client.query(
+        `select material_id, quantity
+           from public.procedure_items
+          where procedure_id = $1 and user_id = $2 and material_id is not null`,
+        [id, userId]
+      )
+      for (const it of items.rows) {
+        await applyStockDelta(client, {
+          userId,
+          materialId: it.material_id,
+          qty: Number(it.quantity) || 0
+        })
+      }
+    }
+
+    await client.query('delete from public.procedure_attachments where procedure_id = $1', [id])
+    await client.query('delete from public.procedure_machines where procedure_id = $1 and user_id = $2', [id, userId])
+    await client.query('delete from public.procedure_items where procedure_id = $1 and user_id = $2', [id, userId])
+    await client.query('delete from public.procedures where id = $1 and user_id = $2', [id, userId])
+
+    await client.query('commit')
+    return res.status(204).send()
+  } catch (err: any) {
+    try { await client.query('rollback') } catch {}
+    return res.status(500).json({ error: err?.message || 'Erro ao excluir procedimento' })
+  } finally {
+    client.release()
+  }
+}
+
 export const createProcedure: RequestHandler = async (req, res) => {
   const client = await pool.connect()
   try {
@@ -346,17 +424,11 @@ export const createProcedure: RequestHandler = async (req, res) => {
       }
       const currentMode = ((mode ?? (is_budget ? 'BUDGET' : 'DONE')) as 'BUDGET' | 'DONE' | 'APPLICATION')
       if (currentMode !== 'BUDGET' && it.material_id != null) {
-        const upd = await client.query(
-          `update public.materials
-             set stock = stock - $1
-           where id = $2 and user_id = $3 and stock >= $1
-           returning stock`,
-          [qty, it.material_id, userId]
-        )
-        if (!upd.rowCount) {
-          await client.query('rollback')
-          return res.status(400).json({ error: 'Estoque insuficiente para o material selecionado' })
-        }
+        await applyStockDelta(client, {
+          userId,
+          materialId: it.material_id,
+          qty: -qty
+        })
       }
       await client.query(
         `insert into public.procedure_items
@@ -388,6 +460,7 @@ export const createProcedure: RequestHandler = async (req, res) => {
     })
   } catch (err: any) {
     try { await client.query('rollback') } catch {}
+    if (err?.status === 400) return res.status(400).json({ error: err.message })
     if (err?.code === '23503') return res.status(400).json({ error: 'FK inválida (material/máquina).' })
     if (err?.code === '23514') return res.status(400).json({ error: 'Origem do item inválida (material_id OU manual_name).' })
     return res.status(500).json({ error: 'Erro ao criar procedimento' })
@@ -401,5 +474,6 @@ export default {
   getDayReport,
   getProcedureById,
   getProcedureDetails,
-  createProcedure
+  createProcedure,
+  deleteProcedure
 }
