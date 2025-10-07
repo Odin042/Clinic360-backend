@@ -335,7 +335,7 @@ export const createProcedure: RequestHandler = async (req, res) => {
     const head = await client.query(
       `insert into public.procedures
         (user_id, name, professional_id, patient_id, date_procedure, final_price, profit_percent, notes, "mode")
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       values ($1,$2,$3,$4,$5::date,$6,$7,$8,$9)
        returning *`,
       [
         userId,
