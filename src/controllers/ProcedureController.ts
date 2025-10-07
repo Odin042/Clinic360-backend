@@ -81,6 +81,7 @@ export const listProcedures: RequestHandler = async (req, res) => {
     const sql = `
       select
         p.*,
+        to_char(p.date_procedure, 'YYYY-MM-DD') as date_procedure,
         (p."mode" = 'BUDGET')::boolean as is_budget,
         a.before_url,
         a.after_url,
@@ -106,7 +107,9 @@ export const getProcedureDetails: RequestHandler = async (req, res) => {
     const id = Number(req.params.id)
     if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID inválido' })
     const head = await pool.query(
-      `select p.*,
+      `select
+              p.*,
+              to_char(p.date_procedure, 'YYYY-MM-DD') as date_procedure,
               (p."mode" = 'BUDGET')::boolean as is_budget,
               a.before_url, a.after_url,
               coalesce(pe.name, d.name, u.username, concat('Profissional #', p.professional_id)) as professional_name
@@ -152,6 +155,7 @@ export const getProcedureById: RequestHandler = async (req, res) => {
       `
       select
         p.*,
+        to_char(p.date_procedure, 'YYYY-MM-DD') as date_procedure,
         (p."mode" = 'BUDGET')::boolean as is_budget,
         a.before_url,
         a.after_url,
@@ -443,7 +447,9 @@ export const createProcedure: RequestHandler = async (req, res) => {
       }
     } catch {}
     const full = await pool.query(
-      `select p.*,
+      `select
+              p.*,
+              to_char(p.date_procedure, 'YYYY-MM-DD') as date_procedure,
               (p."mode" = 'BUDGET')::boolean as is_budget,
               a.before_url, a.after_url
          from public.procedures p
