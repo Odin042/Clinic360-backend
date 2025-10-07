@@ -313,11 +313,7 @@ export const createProcedure: RequestHandler = async (req, res) => {
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date_procedure))) {
       return res.status(400).json({ error: 'Data do procedimento inválida.' })
-    }
-    const today = new Date().toISOString().slice(0, 10)
-    if (date_procedure !== today) {
-      return res.status(400).json({ error: `A data do procedimento deve ser o dia ${today}.` })
-    }
+    } 
     const hasAnyMachine = Array.isArray(machines) && machines.length > 0
     const hasAnyItem = Array.isArray(items) && items.length > 0
     if (!hasAnyMachine && !hasAnyItem) {
