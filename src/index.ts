@@ -15,7 +15,7 @@ const normalize = (u?: string) => {
 const whitelist = [FRONT_URL, FRONT_V2_URL, FRONT_PRD].filter(Boolean).map(normalize)
 
 const allowedRegex = [
-  /^https?:\/\/([a-z0-9-]+\.)*clinic360pro\.com\.br$/i,
+  /^https?:\/\/([a-z0-9-]+\.)*cliniclabs\.com\.br$/i,
   /^https?:\/\/[^/]*clinic360pro[^/]*\.vercel\.app$/i,
   /^https?:\/\/localhost(:\d+)?$/i,
   /^https?:\/\/127\.0\.0\.1(:\d+)?$/i
