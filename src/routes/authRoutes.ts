@@ -11,6 +11,8 @@ import { createMaterial, deleteMaterial, listMaterials, updateMaterial } from '.
 import { createMachine, listMachines, updateMachine, deleteMachine } from '../controllers/machineController'
 import { createPrescription, listPrescriptions, updatePrescription, deletePrescription } from '../controllers/prescriptionsController'
 import { createExam, listExams } from '../controllers/examsController'
+import ProcedureController from '../controllers/ProcedureController'
+import { uploadProcedureImage } from '../controllers/uploadsController'
 
 const upload = multer({ storage: multer.memoryStorage() })
 
@@ -50,5 +52,18 @@ router.delete('/prescriptions/:id', deletePrescription)
 
 router.post('/patient/:id/exams', upload.single('file'), createExam)
 router.get('/patient/:id/exams/list', listExams)
+
+router.post('/patient/:id/procedures/uploads', upload.single('file'), uploadProcedureImage)
+
+router.get('/procedures', ProcedureController.listProcedures)
+router.post('/procedures', ProcedureController.createProcedure)
+router.get('/procedures/:id', ProcedureController.getProcedureById)
+router.delete('/procedures/:id', ProcedureController.deleteProcedure)
+
+router.get('/procedimentos', ProcedureController.listProcedures)
+router.post('/procedimentos', ProcedureController.createProcedure)
+router.delete('/procedimentos/:id', ProcedureController.deleteProcedure)
+
+router.get('/relatorios/dia/:date', ProcedureController.getDayReport)
 
 export default router
