@@ -18,8 +18,6 @@ interface Patient {
   height: string
 }
 
-
-
 export const createPatient: RequestHandler = async (req, res) => {
   try {
     const authHeader = req.headers.authorization
@@ -73,6 +71,28 @@ export const createPatient: RequestHandler = async (req, res) => {
     } = req.body as Patient
 
     const cpfClean = (cpf_cnpj || '').replace(/\D/g, '')
+
+    if (patientEmail) {
+      const emailCheck = await pool.query(
+        'SELECT id FROM patient WHERE email = $1 AND doctor_id = $2',
+        [patientEmail, doctorId]
+      )
+      if (emailCheck.rows.length > 0) {
+        res.status(409).json({ error: 'E-mail já cadastrado para outro paciente' })
+        return
+      }
+    }
+
+    if (cpfClean) {
+      const cpfCheck = await pool.query(
+        'SELECT id FROM patient WHERE cpf_cnpj = $1 AND doctor_id = $2',
+        [cpfClean, doctorId]
+      )
+      if (cpfCheck.rows.length > 0) {
+        res.status(409).json({ error: 'CPF já cadastrado para outro paciente' })
+        return
+      }
+    }
 
     const result = await pool.query(
       `
@@ -187,7 +207,6 @@ export const getPatientById: RequestHandler = async (req, res) => {
     const patientId = Number(req.params.id)
     if (!Number.isFinite(patientId)) return res.status(400).json({ error: 'Parâmetro id inválido' })
 
-   
     const rawDoctorId = docRes.rows[0].id
     const doctorId =
       typeof rawDoctorId === 'object'
@@ -197,11 +216,10 @@ export const getPatientById: RequestHandler = async (req, res) => {
     if (!Number.isFinite(doctorId)) {
       return res.status(500).json({ error: 'doctorId inválido (não numérico)' })
     }
- 
 
     const patRes = await pool.query(
       'SELECT * FROM patient WHERE id = $1 AND doctor_id = $2',
-      [patientId, doctorId] 
+      [patientId, doctorId]
     )
     if (!patRes.rowCount) return res.status(404).json({ error: 'Paciente não encontrado' })
 
