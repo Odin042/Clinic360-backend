@@ -14,6 +14,14 @@ import { createExam, listExams } from '../controllers/examsController'
 import ProcedureController from '../controllers/ProcedureController'
 import { uploadProcedureImage } from '../controllers/uploadsController'
 
+import {
+  createExamOrder,
+  deleteExamOrder,
+  getExamOrderById,
+  listExamOrdersByPatient,
+  updateExamOrder
+} from '../controllers/examsOrderController'
+
 const upload = multer({ storage: multer.memoryStorage() })
 
 const router = Router()
@@ -65,5 +73,12 @@ router.post('/procedimentos', ProcedureController.createProcedure)
 router.delete('/procedimentos/:id', ProcedureController.deleteProcedure)
 
 router.get('/relatorios/dia/:date', ProcedureController.getDayReport)
+
+
+router.post('/exam-orders', createExamOrder)
+router.get('/exam-orders/:id', getExamOrderById)
+router.patch('/exam-orders/:id', updateExamOrder)
+router.delete('/exam-orders/:id', deleteExamOrder)
+router.get('/patient/:id/exam-orders/list', listExamOrdersByPatient)
 
 export default router
