@@ -23,10 +23,11 @@ export const createExamOrder: RequestHandler = async (req, res) => {
     const ins = await pool.query(
       `insert into exam_orders (patient_id, doctor_id, status, notes, requested_at, created_at, updated_at)
        values ($1, $2, 'DRAFT', $3, now(), now(), now())
-       returning id`,
+       returning id, order_no`,
       [patientId, Number(doctorId), notes]
     )
     const orderId = ins.rows[0].id
+    const orderNo = ins.rows[0].order_no
 
     const values = []
     const params = []
@@ -41,7 +42,7 @@ export const createExamOrder: RequestHandler = async (req, res) => {
       values
     )
 
-    return res.json({ id: orderId })
+    return res.json({ id: orderId, order_no: orderNo })
   } catch (e) {
     console.error(e)
     return res.status(500).json({ error: 'Falha ao criar pedido de exame' })
@@ -54,7 +55,7 @@ export const getExamOrderById: RequestHandler = async (req, res) => {
     if (!Number.isFinite(id)) return res.status(400).json({ error: 'id inválido' })
 
     const { rows: orders } = await pool.query(
-      `SELECT id, patient_id, doctor_id, status, notes, requested_at, due_date, created_at, updated_at
+      `SELECT id, patient_id, doctor_id, status, notes, order_no, requested_at, due_date, created_at, updated_at
        FROM public.exam_orders WHERE id = $1`, [id]
     )
     if (orders.length === 0) return res.status(404).json({ error: 'Pedido não encontrado' })
@@ -80,6 +81,7 @@ export const listExamOrdersByPatient: RequestHandler = async (req, res) => {
       `
       select
         o.id,
+        o.order_no,
         o.status,
         o.notes,
         o.requested_at,
@@ -99,7 +101,7 @@ export const listExamOrdersByPatient: RequestHandler = async (req, res) => {
       left join exam_order_items i on i.order_id = o.id
       where o.patient_id = $1 and o.doctor_id = $2
       group by o.id
-      order by o.created_at desc
+      order by o.order_no desc
       `,
       [patientId, Number(doctorId)]
     )
@@ -121,8 +123,13 @@ export const updateExamOrder: RequestHandler = async (req, res) => {
     const items = Array.isArray(req.body.items) ? req.body.items : undefined
     if (!Number.isFinite(id)) return res.status(400).json({ error: 'id inválido' })
 
-    const own = await client.query('select patient_id from exam_orders where id = $1 and doctor_id = $2', [id, Number(doctorId)])
+    const own = await client.query(
+      'select patient_id, order_no from exam_orders where id = $1 and doctor_id = $2', 
+      [id, Number(doctorId)]
+    )
     if (!own.rowCount) return res.status(404).json({ error: 'Pedido não encontrado' })
+    
+    const orderNo = own.rows[0].order_no
 
     await client.query('begin')
 
@@ -156,7 +163,7 @@ export const updateExamOrder: RequestHandler = async (req, res) => {
     }
 
     await client.query('commit')
-    return res.json({ id })
+    return res.json({ id, order_no: orderNo })
   } catch (e) {
     await client.query('rollback')
     console.error(e)
