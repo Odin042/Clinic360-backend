@@ -2,7 +2,7 @@ import { Router } from 'express'
 import multer from 'multer'
 
 import { register } from '../controllers/authController'
-import { getUserByToken } from '../controllers/userController'
+import { getUserByToken, updateUserProfile } from '../controllers/userController'
 import { createPatient, getPatientById, getPatients } from '../controllers/patientController'
 import { createAppointment, getAppointments, updateAppointment, deleteAppointment } from '../controllers/appointmentsController'
 import { createRecord, listRecords } from '../controllers/medicalRecordController'
@@ -23,11 +23,17 @@ import {
 } from '../controllers/examsOrderController'
 
 const upload = multer({ storage: multer.memoryStorage() })
+console.log('authRoutes carregado')
 
 const router = Router()
 
 router.post('/register', register)
 router.get('/user', getUserByToken)
+console.log('Registrando rota PUT /user')
+router.put('/user', upload.fields([
+  { name: 'avatar', maxCount: 1 },
+  { name: 'logo', maxCount: 1 }
+]), updateUserProfile)
 
 router.post('/patient', createPatient)
 router.get('/patient/list', getPatients)
