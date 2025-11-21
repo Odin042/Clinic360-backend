@@ -18,6 +18,8 @@ interface Patient {
   height: string
 }
 
+
+
 export const createPatient: RequestHandler = async (req, res) => {
   try {
     const authHeader = req.headers.authorization
@@ -216,10 +218,11 @@ export const getPatientById: RequestHandler = async (req, res) => {
     if (!Number.isFinite(doctorId)) {
       return res.status(500).json({ error: 'doctorId inválido (não numérico)' })
     }
+ 
 
     const patRes = await pool.query(
       'SELECT * FROM patient WHERE id = $1 AND doctor_id = $2',
-      [patientId, doctorId]
+      [patientId, doctorId] 
     )
     if (!patRes.rowCount) return res.status(404).json({ error: 'Paciente não encontrado' })
 
