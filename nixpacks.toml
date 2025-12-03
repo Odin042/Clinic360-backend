@@ -5,7 +5,7 @@ nixPkgs = ['bun']
 cmds = ['bun install']
 
 [phases.build]
-cmds = ['bun run build']
+cmds = ['echo "No build step required"']
 
 [start]
-cmd = 'bun run start'
+cmd = 'bun run src/index.ts'
