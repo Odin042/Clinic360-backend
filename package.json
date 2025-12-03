@@ -2,6 +2,9 @@
   "name": "clinic360-backend",
   "module": "src/index.ts",
   "type": "module",
+  "engines": {
+    "bun": ">=1.0.0"
+  },
   "scripts": {
     "start": "bun run src/index.ts",
     "dev": "bun run src/index.ts --watch",
