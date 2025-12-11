@@ -4,7 +4,16 @@ import multer from 'multer'
 import { register } from '../controllers/authController'
 import { getUserByToken, updateUserProfile } from '../controllers/userController'
 import { createPatient, getPatientById, getPatients } from '../controllers/patientController'
-import { createAppointment, getAppointments, updateAppointment, deleteAppointment } from '../controllers/appointmentsController'
+import { 
+  createAppointment, 
+  getAppointments, 
+  updateAppointment, 
+  deleteAppointment,
+  startAppointment,
+  completeAppointment,
+  markAppointmentAsMissed,
+  getAppointmentReport
+} from '../controllers/appointmentsController'
 import { createRecord, listRecords } from '../controllers/medicalRecordController'
 import { createAnamnesis, listAnamnesis } from '../controllers/anamnesisController'
 import { createMaterial, deleteMaterial, listMaterials, updateMaterial } from '../controllers/materialsController'
@@ -43,6 +52,10 @@ router.get('/patient/:id/records', listRecords)
 
 router.post('/appointments', createAppointment)
 router.get('/appointments/list', getAppointments)
+router.get('/appointments/report', getAppointmentReport)
+router.post('/appointments/:id/start', startAppointment)
+router.post('/appointments/:id/complete', completeAppointment)
+router.post('/appointments/:id/mark-missed', markAppointmentAsMissed)
 router.put('/appointments/:id', updateAppointment)
 router.delete('/appointments/:id', deleteAppointment)
 
@@ -79,7 +92,6 @@ router.post('/procedimentos', ProcedureController.createProcedure)
 router.delete('/procedimentos/:id', ProcedureController.deleteProcedure)
 
 router.get('/relatorios/dia/:date', ProcedureController.getDayReport)
-
 
 router.post('/exam-orders', createExamOrder)
 router.get('/exam-orders/:id', getExamOrderById)
